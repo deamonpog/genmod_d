@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+GENERATED_DATA/
+results/checkpoints/
+results/logs/genmod-*.out
+results/logs/genmod-*.err
+.vscode/
+.claude/
+*.pt
