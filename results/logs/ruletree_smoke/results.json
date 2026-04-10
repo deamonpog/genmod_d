@@ -1,0 +1,71 @@
+{
+  "system": "rule_trees",
+  "config": "ruletree_smoke",
+  "model_size": "tiny",
+  "num_params": 147873,
+  "num_classes": 33,
+  "train_samples": 99,
+  "test_top1": 0.06060606060606061,
+  "test_top3": 0.09090909090909091,
+  "test_top5": 0.15151515151515152,
+  "test_nll": 3.62294695594094,
+  "ece_pre_temp": 0.002095246631087677,
+  "ece_post_temp": 0.01280450640302716,
+  "brier_score": 0.9762284159660339,
+  "learned_temperature": 1.7050323486328125,
+  "group_probe_accuracy": 0.3952380952380952,
+  "conformal": {
+    "0.1": {
+      "coverage": 1.0,
+      "avg_set_size": 33.0,
+      "median_set_size": 33.0,
+      "max_set_size": 33,
+      "min_set_size": 33,
+      "singleton_fraction": 0.0,
+      "conditional_coverage": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0
+      },
+      "conditional_set_size": {
+        "0": 33.0,
+        "1": 33.0,
+        "2": 33.0,
+        "3": 33.0,
+        "4": 33.0,
+        "5": 33.0
+      },
+      "alpha": 0.1,
+      "q_hat": 1.277867465019226
+    },
+    "0.2": {
+      "coverage": 0.8787878787878788,
+      "avg_set_size": 29.0,
+      "median_set_size": 29.0,
+      "max_set_size": 29,
+      "min_set_size": 29,
+      "singleton_fraction": 0.0,
+      "conditional_coverage": {
+        "0": 0.8333333333333334,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.6,
+        "4": 0.6666666666666666,
+        "5": 1.0
+      },
+      "conditional_set_size": {
+        "0": 29.0,
+        "1": 29.0,
+        "2": 29.0,
+        "3": 29.0,
+        "4": 29.0,
+        "5": 29.0
+      },
+      "alpha": 0.2,
+      "q_hat": 1.190070577263832
+    }
+  }
+}

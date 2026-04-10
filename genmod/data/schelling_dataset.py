@@ -1,12 +1,12 @@
-"""PyTorch dataset for Schelling segregation threshold classification.
+"""PyTorch dataset for Schelling segregation grid classification.
 
-Tokenization: 2x2 patches on 20x20 grid → 100 patches/snapshot.
-Each patch: 4 cells × 3 states = base-3 integer in [0, 80]. Vocab = 82 (81 + CLS).
-Multiple snapshots give temporal dimension.
+Tokenization: 2x2 patches on NxN grid (default 50x50 -> 625 patches/snapshot).
+Each patch: 4 cells * 3 states = base-3 integer in [0, 80]. Vocab = 82 (81 + CLS).
+Multiple snapshots give the temporal dimension.
+
+Reused by the rule_trees system, which produces grids in the same 0/1/2 format.
 """
 
-import json
-from pathlib import Path
 from typing import Dict, List, Tuple
 
 import torch
@@ -47,7 +47,7 @@ def grid_to_patch_tokens(grid: List[List[int]], patch_size: int = 2) -> List[int
 
 
 class SchellingDataset(Dataset):
-    """Snapshot-window dataset for Schelling threshold classification.
+    """Snapshot-window dataset for Schelling-style grid classification.
 
     Each sample uses num_snapshots evenly-spaced snapshots from a run.
     Returns (tokens, time_ids, space_ids, label) matching the common interface.
@@ -58,17 +58,17 @@ class SchellingDataset(Dataset):
         runs_by_label: Dict[int, List[dict]],
         patch_size: int = 2,
         num_snapshots: int = 5,
-        grid_size: int = 20,
+        grid_size: int = 50,
     ):
         self.patch_size = patch_size
         self.num_snapshots = num_snapshots
         self.grid_size = grid_size
 
-        patches_per_snapshot = (grid_size // patch_size) ** 2  # 100 for 20x20 with 2x2
-        vocab_size_no_cls = (3 ** (patch_size * patch_size))  # 81 for 2x2
-        self.cls_token_id = vocab_size_no_cls  # 81
+        patches_per_snapshot = (grid_size // patch_size) ** 2  # 625 for 50x50 with 2x2
+        vocab_size_no_cls = (3 ** (patch_size * patch_size))   # 81 for 2x2
+        self.cls_token_id = vocab_size_no_cls
         self.S = patches_per_snapshot
-        self.vocab_size = vocab_size_no_cls + 1  # 82
+        self.vocab_size = vocab_size_no_cls + 1                 # 82
 
         # Pre-tokenize all runs
         self.tokenized: List[Tuple[List[List[int]], int]] = []  # (snapshot_tokens, label)
@@ -91,7 +91,7 @@ class SchellingDataset(Dataset):
 
                 self.tokenized.append((snap_tokens, label))
 
-        # Each run is one sample (no windowing needed — each run is independent)
+        # Each run is one sample (no windowing needed; each run is independent)
         self.index = list(range(len(self.tokenized)))
 
     def __len__(self):
@@ -118,29 +118,20 @@ class SchellingDataset(Dataset):
         return x, tpos, spos, y
 
 
-def load_schelling_data(data_dir: str, num_classes: int) -> Dict[int, List[dict]]:
-    """Load all Schelling data."""
-    data_path = Path(data_dir)
-    all_runs: Dict[int, List[dict]] = {}
-    for label in range(num_classes):
-        p = data_path / f"threshold_{label:02d}.json"
-        if not p.exists():
-            raise FileNotFoundError(f"Missing {p}. Generate data first.")
-        all_runs[label] = json.loads(p.read_text())
-    return all_runs
-
-
 def get_schelling_tokenization_params(
-    grid_size: int = 20, patch_size: int = 2, num_snapshots: int = 5,
+    grid_size: int = 50, patch_size: int = 2, num_snapshots: int = 5,
 ) -> dict:
-    """Compute tokenization parameters for Schelling."""
-    patches_per_snapshot = (grid_size // patch_size) ** 2  # 100
-    vocab_no_cls = 3 ** (patch_size * patch_size)          # 81
+    """Compute tokenization parameters for Schelling-style grids.
+
+    Defaults give: 625 patches/snapshot, vocab 82, seq_len 3126.
+    """
+    patches_per_snapshot = (grid_size // patch_size) ** 2
+    vocab_no_cls = 3 ** (patch_size * patch_size)
     cls_token_id = vocab_no_cls
-    vocab_size = vocab_no_cls + 1                           # 82
-    seq_len = 1 + num_snapshots * patches_per_snapshot      # 501
-    time_size = num_snapshots + 1                           # 6
-    space_size = patches_per_snapshot + 1                   # 101
+    vocab_size = vocab_no_cls + 1
+    seq_len = 1 + num_snapshots * patches_per_snapshot
+    time_size = num_snapshots + 1
+    space_size = patches_per_snapshot + 1
     return {
         "vocab_size": vocab_size,
         "cls_token_id": cls_token_id,

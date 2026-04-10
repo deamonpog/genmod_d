@@ -1,14 +1,15 @@
-name: logistic_base
+name: ruletree_base
 
 data:
-  system: logistic_map
+  system: rule_trees
   data_dir: GENERATED_DATA
-  n_r_classes: 40
-  logistic_window_T: 64
-  quantize_bits: 8
+  grid_size: 50
+  schelling_patch_size: 2
+  num_snapshots: 5
   train_frac: 0.8
   val_frac: 0.1
-  held_out_fraction: 0.0
+  n_tree_candidates: 10000
+  tree_max_depth: 3
 
 model:
   model_size: base
@@ -16,19 +17,19 @@ model:
   positional_encoding: time_space
 
 training:
-  batch_size: 256
+  batch_size: 32
   lr: 3.0e-4
   weight_decay: 0.1
   grad_clip: 1.0
-  epochs: 20
+  epochs: 30
   label_smoothing: 0.05
   seed: 42
   device: cuda
   lr_scheduler: cosine
-  warmup_epochs: 2
+  warmup_epochs: 3
   checkpoint_dir: results/checkpoints
-  save_every: 5
   log_dir: results/logs
+  save_every: 5
 
 conformal:
   enabled: true

@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 GENERATED_DATA/
+GENERATED_DATA_smoke/
 results/checkpoints/
 results/logs/genmod-*.out
 results/logs/genmod-*.err

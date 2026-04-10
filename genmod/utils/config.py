@@ -1,41 +1,31 @@
 """Configuration loading from YAML with defaults.
 
-Supports multiple dynamical systems: ECA, logistic map, Schelling segregation.
+Single system: rule_trees (Schelling segregation with auto-generated rule trees).
 """
 
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import yaml
 
 
 @dataclass
 class DataConfig:
-    system: str = "eca"  # "eca", "logistic_map", "schelling"
+    system: str = "rule_trees"
     data_dir: str = "GENERATED_DATA"
 
-    # Common
+    # Common splits
     train_frac: float = 0.8
     val_frac: float = 0.1
-    held_out_fraction: float = 0.0
-    split_strategy: str = "equivalence"  # "random", "equivalence", "by_wolfram_class"
 
-    # ECA-specific
-    rules: Optional[List[int]] = None  # None = all available
-    lattice_width: int = 32
-    patch_size: int = 8
-    window_T: int = 32
-
-    # Logistic map-specific
-    n_r_classes: int = 40
-    logistic_window_T: int = 64
-    quantize_bits: int = 8
-
-    # Schelling-specific
-    grid_size: int = 20
+    # Schelling grid (also used by rule_trees)
+    grid_size: int = 50
     schelling_patch_size: int = 2
     num_snapshots: int = 5
+
+    # Rule tree generation
+    n_tree_candidates: int = 10000
+    tree_max_depth: int = 3
 
 
 @dataclass
@@ -47,16 +37,16 @@ class ModelConfig:
 
 @dataclass
 class TrainingConfig:
-    batch_size: int = 256
+    batch_size: int = 32
     lr: float = 3e-4
     weight_decay: float = 0.1
     grad_clip: float = 1.0
-    epochs: int = 15
+    epochs: int = 30
     label_smoothing: float = 0.05
     seed: int = 42
     device: str = "cuda"
     lr_scheduler: str = "cosine"
-    warmup_epochs: int = 1
+    warmup_epochs: int = 3
     checkpoint_dir: str = "results/checkpoints"
     save_every: int = 5
     log_dir: str = "results/logs"
@@ -64,7 +54,7 @@ class TrainingConfig:
 
 @dataclass
 class ConformalConfig:
-    enabled: bool = False
+    enabled: bool = True
     method: str = "raps"
     alpha_levels: List[float] = field(default_factory=lambda: [0.01, 0.05, 0.10, 0.20])
     k_reg: int = 5

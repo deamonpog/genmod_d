@@ -1,4 +1,8 @@
-# Running GenMod on Pasteur HPC
+# Running GenMod (ideaD: rule trees) on Pasteur HPC
+
+This branch implements **Option D**: classification of Schelling segregation
+dynamics over auto-generated rule trees, with conformal prediction for
+uncertainty quantification.
 
 ## Step 1: Copy project to Pasteur
 
@@ -6,59 +10,70 @@ From your local machine:
 
 ```bash
 # Copy code (exclude local data, results, and caches)
-rsync -av --exclude='GENERATED_DATA' --exclude='results' --exclude='__pycache__' \
+rsync -av --exclude='GENERATED_DATA' --exclude='GENERATED_DATA_smoke' \
+    --exclude='results' --exclude='__pycache__' \
     --exclude='.git' --exclude='*.pyc' \
-    GenMod/ pasteur-login:/data/scratch/casl/$USER/GenMod/
+    genmod_d/ pasteur-login:/data/scratch/casl/$USER/genmod_d/
 ```
 
-Or if rsync isn't available, use scp:
+Or use scp:
 
 ```bash
-# From the parent directory of GenMod
-scp -r GenMod pasteur-login:/data/scratch/casl/$USER/
+scp -r genmod_d pasteur-login:/data/scratch/casl/$USER/
 ```
 
 ## Step 2: Create the conda environment (one-time)
 
-SSH into pasteur-login, then run:
-
 ```bash
 ssh pasteur-login
 
-cd /data/scratch/casl/$USER/GenMod
+cd /data/scratch/casl/$USER/genmod_d
 bash slurm/setup_env.sh
 ```
 
-This creates a conda environment at `/data/apps/casl/arachchige/genmod-env` with Python 3.11, PyTorch (CUDA 12.1 for H200), and all dependencies.
+This creates a conda environment at `/data/apps/casl/arachchige/genmod-env`
+with Python 3.11, PyTorch (CUDA 12.4 for H200), and dependencies.
 
-**Verify it worked:**
+**Verify it worked.** Login nodes have no GPUs, so `torch.cuda.is_available()`
+will always return `False` there. Test on a GPU node via an interactive srun:
 
 ```bash
-source /opt/miniforge3/etc/profile.d/conda.sh
-conda activate /data/apps/casl/arachchige/genmod-env
-python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+srun --partition=debug --gres=gpu:1 --time=00:10:00 --mem=8G --pty \
+    bash slurm/fix_pytorch_cuda.sh test
 ```
 
-## Step 3: Submit all experiments
+That activates the env, runs `nvidia-smi`, and runs a small CUDA matmul to
+confirm everything works. If PyTorch reports CUDA unavailable, reinstall the
+GPU build from the login node:
 
 ```bash
-cd /data/scratch/casl/$USER/GenMod
+bash slurm/fix_pytorch_cuda.sh install
+```
+
+then re-run the interactive test above.
+
+## Step 3: Submit experiments
+
+```bash
+cd /data/scratch/casl/$USER/genmod_d
 mkdir -p results/logs
 
-# Option A: Submit all three systems at once
-bash slurm/run_all.sh
+# Smoke test first (debug partition, ~10 minutes)
+sbatch slurm/train_ruletrees_smoke.sh
 
-# Option B: Submit individually
-sbatch slurm/train_eca.sh
-sbatch slurm/train_logistic.sh
-sbatch slurm/train_schelling.sh
+# Once smoke test passes, submit the full job
+# (standard partition, 64 CPUs for parallel data gen, ~3-4h wall clock)
+sbatch slurm/train_ruletrees.sh
 ```
 
-Each job:
-1. Generates the data if not already present
-2. Trains a Base model
-3. Runs calibration analysis, conformal prediction, embedding analysis
-4. Saves results to `results/`
+The full job:
+1. Generates 10000 candidate rule trees, deduplicates structurally and
+   behaviorally, saves the resulting library to
+   `GENERATED_DATA/rule_trees/tree_library.json`
+2. Runs 100 Schelling simulations per tree (50x50 grid, 500 ticks)
+3. Trains the base Transformer (4M params) for 30 epochs
+4. Runs calibration analysis, RAPS conformal prediction, embedding analysis
+5. Saves results to `results/logs/ruletree_base/results.json`
 
 ## Step 4: Monitor jobs
 
@@ -66,97 +81,102 @@ Each job:
 # Check job status
 squeue -u $(whoami)
 
-# Watch a specific job's output in real-time
-tail -f results/logs/genmod-eca_<JOBID>.out
+# Watch a specific job's output in real time
+tail -f results/logs/genmod-ruletrees_<JOBID>.out
 
 # Check cluster status
 sinfo
 
-# Cancel a job if needed
+# Cancel a job
 scancel <JOBID>
 ```
 
-## Step 5: Check results
-
-After jobs complete:
+## Step 5: Inspect results
 
 ```bash
-# Results JSON files
-cat results/logs/all_256_base/results.json
-cat results/logs/logistic_base/results.json
-cat results/logs/schelling_base/results.json
+# Smoke test results
+cat results/logs/ruletree_smoke/results.json
 
-# Figures (reliability diagrams, t-SNE plots)
-ls results/figures/*/
+# Full job results
+cat results/logs/ruletree_base/results.json
+
+# Figures (reliability diagrams, t-SNE)
+ls results/figures/ruletree_base/
 
 # Training curves
-cat results/logs/*/training_log.csv
+cat results/logs/ruletree_base/training_log.csv
 ```
 
-## Step 6: Copy results back to local machine
+## Step 6: Copy results back
 
 From your local machine:
 
 ```bash
-scp -r pasteur-login:/data/scratch/casl/$USER/GenMod/results/ GenMod/results/
+scp -r pasteur-login:/data/scratch/casl/$USER/genmod_d/results/ ./results/
 ```
 
 ---
 
-## Experiment Configs Reference
+## Configs
 
-| Config | System | What it does |
-|--------|--------|-------------|
-| `configs/all_256_base.yaml` | ECA | 256 rules, Base model, 20 epochs |
-| `configs/logistic_base.yaml` | Logistic Map | 40 r-values, Base model, 20 epochs, + conformal |
-| `configs/schelling_base.yaml` | Schelling | 9 thresholds, Base model, 20 epochs, + conformal |
-| `configs/eca_conformal.yaml` | ECA | Same as all_256_base but with conformal prediction |
-| `configs/generalization_75_25.yaml` | ECA | Held-out 25% of rules (generalization test) |
-| `configs/ablation_std_pos.yaml` | ECA | Standard positional encoding (ablation) |
+| Config | Purpose |
+|--------|---------|
+| `configs/ruletree_base.yaml` | Full experiment: 50x50 grid, base model, 30 epochs, conformal enabled |
+| `configs/ruletree_smoke.yaml` | Smoke test: tiny model, 100 candidates, 5 runs/tree, 3 epochs |
 
-## Running Custom Experiments
+## Slurm scripts
+
+| Script | Partition | Time | Purpose |
+|--------|-----------|------|---------|
+| `slurm/setup_env.sh` | login | n/a | One-time conda env setup |
+| `slurm/fix_pytorch_cuda.sh` | n/a | n/a | Reinstall PyTorch CUDA build |
+| `slurm/train_ruletrees_smoke.sh` | debug | 30 min | End-to-end smoke test |
+| `slurm/train_ruletrees.sh` | standard | 24 h | Full Option D experiment |
+
+## Custom runs
 
 ```bash
-# Override config values from command line
+# Interactive session for debugging
 srun --partition=debug --gres=gpu:1 --time=01:00:00 --mem=32G --pty bash
 
-# Then inside the interactive session:
+# Inside the session
 source /opt/miniforge3/etc/profile.d/conda.sh
 conda activate /data/apps/casl/arachchige/genmod-env
-cd /data/scratch/casl/$USER/GenMod
+cd /data/scratch/casl/$USER/genmod_d
 
-# Quick test
-python scripts/train.py --config configs/logistic_base.yaml \
-    --model_size tiny --epochs 3 --name quick_test
-
-# ECA with conformal
-python scripts/train.py --config configs/eca_conformal.yaml
-
-# Generalization experiment
-python scripts/train.py --config configs/generalization_75_25.yaml
+# Example: override hyperparameters at the CLI
+python scripts/train.py --config configs/ruletree_base.yaml \
+    --model_size small --epochs 5 --name quick_test
 ```
 
-## Expected Runtimes (H200 GPU)
+## Expected runtimes (1x H200 + 128 CPU workers, Pasteur fat node)
 
-| Experiment | Estimated Time |
-|-----------|---------------|
-| ECA Base (256 rules, 20 epochs) | ~4-6 hours |
-| Logistic Base (40 classes, 20 epochs) | ~30 min |
-| Schelling Base (9 classes, 20 epochs) | ~1-2 hours |
-| All three in parallel | ~6 hours total (1 GPU each) |
+| Stage | Estimate |
+|-------|----------|
+| Tree fingerprinting (10000 -> ~6500 unique, parallel across 128 cores) | 5-10 min |
+| Simulation data (~2000 trees x 100 runs, parallel across 128 cores) | 8-12 hours |
+| Training (30 epochs, base model on ~150K samples) on H200 | 2-4 hours |
+| Total | ~12-16 hours wall clock |
+
+Note: the first run produced 2089 behaviorally distinct trees from the
+10000 candidates (much more than the original 200-500 estimate), which
+is why the simulation phase dominates total runtime.
+
+The simulator is pure Python and CPU-bound, so multiprocessing gives a
+near-linear speedup over the serial path. Workers are dispatched at the
+tree level for the simulation phase and at the candidate level for
+fingerprinting; output is bit-identical to the serial path.
 
 ## Troubleshooting
 
-**"CUDA out of memory"**: Reduce batch size in the config YAML or via `--batch_size 128`.
+**"CUDA out of memory"**: reduce `batch_size` in
+`configs/ruletree_base.yaml` or via `--batch_size 16`. The default of 32
+assumes an 80GB H200; smaller GPUs will need a smaller batch.
 
-**"Missing data file"**: The Slurm scripts auto-generate data if not found. If you want to generate separately:
-```bash
-python scripts/generate_all_256.py
-python scripts/generate_logistic.py
-python scripts/generate_schelling.py
-```
+**"Missing tree_library.json"**: run the data-generation script first, or
+re-submit `slurm/train_ruletrees.sh` (it will auto-generate if absent).
 
-**"Module not found"**: Make sure you activated the conda env:
+**"Module not found"**: activate the conda env:
 ```bash
 source /opt/miniforge3/etc/profile.d/conda.sh
 conda activate /data/apps/casl/arachchige/genmod-env

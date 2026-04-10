@@ -1,12 +1,12 @@
-"""Unified training script for inverse generative modeling.
+"""Training script for rule-tree classification.
 
-Supports multiple dynamical systems: ECA, logistic map, Schelling segregation.
-Each system uses the same Transformer architecture with system-specific tokenization.
+System: rule_trees (Schelling segregation with auto-generated rule trees).
+Uses a Transformer encoder over patch tokens with decomposed time/space
+positional embeddings, plus RAPS conformal prediction for uncertainty
+quantification.
 
 Usage:
-    python scripts/train.py --config configs/all_256_base.yaml
-    python scripts/train.py --config configs/logistic_base.yaml
-    python scripts/train.py --config configs/schelling_base.yaml
+    python scripts/train.py --config configs/ruletree_base.yaml
 """
 
 import argparse
@@ -29,7 +29,7 @@ from genmod.models.factory import build_model, get_tokenization_params
 from genmod.evaluation.metrics import eval_topk, compute_nll, per_class_accuracy, collect_predictions
 from genmod.evaluation.calibration import (
     expected_calibration_error, calibrate_temperature,
-    reliability_diagram, brier_score, prediction_entropy,
+    reliability_diagram, brier_score,
 )
 from genmod.evaluation.embeddings import extract_all_embeddings, compute_tsne, linear_probe, plot_embedding_space
 from genmod.utils.config import load_config, ExperimentConfig
@@ -39,57 +39,20 @@ from genmod.utils.config import load_config, ExperimentConfig
 # System-specific data loading
 # ============================================================
 
-def _load_eca(cfg):
-    """Load ECA data and build datasets."""
-    from genmod.data.dataset import CARuleWindowDataset, load_all_rules
-    from genmod.data.splits import prepare_splits, split_rules_for_generalization
-    from genmod.data.wolfram import get_wolfram_class
-
-    # Discover rules
-    if cfg.data.rules is None:
-        data_path = Path(cfg.data.data_dir)
-        rules = sorted(int(f.stem.split("_")[1]) for f in data_path.glob("rule_*.json"))
-    else:
-        rules = cfg.data.rules
-
-    held_out_rules = []
-    if cfg.data.held_out_fraction > 0:
-        rules, held_out_rules = split_rules_for_generalization(
-            rules, cfg.data.held_out_fraction, cfg.data.split_strategy, cfg.training.seed)
-
-    all_runs = load_all_rules(cfg.data.data_dir, rules)
-    train_runs, val_runs, test_runs = prepare_splits(
-        all_runs, cfg.data.train_frac, cfg.data.val_frac, cfg.training.seed)
-
-    rule_to_label = {r: i for i, r in enumerate(sorted(rules))}
-    label_to_rule = {i: r for r, i in rule_to_label.items()}
-
-    tok = get_tokenization_params("eca", lattice_width=cfg.data.lattice_width,
-                                   patch_size=cfg.data.patch_size, window_T=cfg.data.window_T)
-
-    ds_kwargs = dict(rule_to_label=rule_to_label, lattice_width=cfg.data.lattice_width,
-                     patch_size=cfg.data.patch_size, window_T=cfg.data.window_T,
-                     cls_token_id=tok["cls_token_id"])
-    train_ds = CARuleWindowDataset(train_runs, **ds_kwargs)
-    val_ds = CARuleWindowDataset(val_runs, **ds_kwargs)
-    test_ds = CARuleWindowDataset(test_runs, **ds_kwargs)
-
-    def get_group(label):
-        return get_wolfram_class(label_to_rule[label])
-
-    return train_ds, val_ds, test_ds, len(rules), label_to_rule, tok, get_group, held_out_rules
-
-
-def _load_logistic(cfg):
-    """Load logistic map data and build datasets."""
-    from genmod.data.logistic_dataset import LogisticMapDataset, load_logistic_data, get_logistic_tokenization_params
-    from genmod.data.logistic_map import get_default_r_values
-    from genmod.data.logistic_metadata import get_regime_index
+def _load_rule_trees(cfg):
+    """Load rule-tree Schelling data and build datasets."""
+    from genmod.data.schelling_dataset import SchellingDataset
+    from genmod.data.ruletree_dataset import load_ruletree_data, get_ruletree_tokenization_params
+    from genmod.data.rule_trees import load_tree_library
+    from genmod.data.ruletree_metadata import get_tree_group
     from genmod.data.splits import split_runs
 
-    n_classes = cfg.data.n_r_classes
-    r_values = get_default_r_values(n_classes)
-    all_runs = load_logistic_data(Path(cfg.data.data_dir) / "logistic_map", n_classes)
+    data_root = Path(cfg.data.data_dir) / "rule_trees"
+    library = load_tree_library(data_root / "tree_library.json")
+    n_classes = len(library)
+    print(f"  Loaded {n_classes} rule trees from {data_root / 'tree_library.json'}")
+
+    all_runs = load_ruletree_data(data_root, n_classes)
 
     train_by_label, val_by_label, test_by_label = {}, {}, {}
     for label, runs in all_runs.items():
@@ -99,62 +62,30 @@ def _load_logistic(cfg):
         val_by_label[label] = va
         test_by_label[label] = te
 
-    tok = get_logistic_tokenization_params(cfg.data.logistic_window_T, cfg.data.quantize_bits)
+    tok = get_ruletree_tokenization_params(
+        grid_size=cfg.data.grid_size,
+        patch_size=cfg.data.schelling_patch_size,
+        num_snapshots=cfg.data.num_snapshots,
+    )
 
-    ds_kwargs = dict(window_T=cfg.data.logistic_window_T, cls_token_id=tok["cls_token_id"],
-                     quantize_bits=cfg.data.quantize_bits)
-    train_ds = LogisticMapDataset(train_by_label, **ds_kwargs)
-    val_ds = LogisticMapDataset(val_by_label, **ds_kwargs)
-    test_ds = LogisticMapDataset(test_by_label, **ds_kwargs)
-
-    label_to_r = {i: r for i, r in enumerate(r_values)}
-
-    def get_group(label):
-        return get_regime_index(label_to_r[label])
-
-    return train_ds, val_ds, test_ds, n_classes, label_to_r, tok, get_group, []
-
-
-def _load_schelling(cfg):
-    """Load Schelling segregation data and build datasets."""
-    from genmod.data.schelling_dataset import SchellingDataset, load_schelling_data, get_schelling_tokenization_params
-    from genmod.data.schelling import DEFAULT_THRESHOLDS
-    from genmod.data.schelling_metadata import get_segregation_index
-    from genmod.data.splits import split_runs
-
-    thresholds = DEFAULT_THRESHOLDS
-    n_classes = len(thresholds)
-    all_runs = load_schelling_data(Path(cfg.data.data_dir) / "schelling", n_classes)
-
-    train_by_label, val_by_label, test_by_label = {}, {}, {}
-    for label, runs in all_runs.items():
-        tr, va, te = split_runs(runs, cfg.data.train_frac, cfg.data.val_frac,
-                                seed=cfg.training.seed + label)
-        train_by_label[label] = tr
-        val_by_label[label] = va
-        test_by_label[label] = te
-
-    tok = get_schelling_tokenization_params(cfg.data.grid_size, cfg.data.schelling_patch_size,
-                                             cfg.data.num_snapshots)
-
-    ds_kwargs = dict(patch_size=cfg.data.schelling_patch_size, num_snapshots=cfg.data.num_snapshots,
+    ds_kwargs = dict(patch_size=cfg.data.schelling_patch_size,
+                     num_snapshots=cfg.data.num_snapshots,
                      grid_size=cfg.data.grid_size)
     train_ds = SchellingDataset(train_by_label, **ds_kwargs)
     val_ds = SchellingDataset(val_by_label, **ds_kwargs)
     test_ds = SchellingDataset(test_by_label, **ds_kwargs)
 
-    label_to_threshold = {i: t for i, t in enumerate(thresholds)}
+    label_to_tree_str = {label: tree_str for label, tree, tree_str in library}
+    tree_by_label = {label: tree for label, tree, tree_str in library}
 
     def get_group(label):
-        return get_segregation_index(label_to_threshold[label])
+        return get_tree_group(tree_by_label[label])
 
-    return train_ds, val_ds, test_ds, n_classes, label_to_threshold, tok, get_group, []
+    return train_ds, val_ds, test_ds, n_classes, label_to_tree_str, tok, get_group, []
 
 
 SYSTEM_LOADERS = {
-    "eca": _load_eca,
-    "logistic_map": _load_logistic,
-    "schelling": _load_schelling,
+    "rule_trees": _load_rule_trees,
 }
 
 
@@ -176,7 +107,6 @@ def train(cfg: ExperimentConfig):
     log_dir.mkdir(parents=True, exist_ok=True)
     fig_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load system data
     system = cfg.data.system
     print(f"System: {system}")
     loader_fn = SYSTEM_LOADERS.get(system)
@@ -190,7 +120,6 @@ def train(cfg: ExperimentConfig):
     val_loader = DataLoader(val_ds, batch_size=cfg.training.batch_size, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=cfg.training.batch_size, shuffle=False)
 
-    # Build model
     model = build_model(
         num_classes=num_classes,
         vocab_size=tok_params["vocab_size"],
@@ -205,7 +134,6 @@ def train(cfg: ExperimentConfig):
     n_params = model.count_parameters()
     print(f"Model: {cfg.model.model_size} | Params: {n_params:,} | SeqLen: {tok_params['seq_len']}")
 
-    # Optimizer + scheduler
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.training.lr, weight_decay=cfg.training.weight_decay)
     total_steps = cfg.training.epochs * len(train_loader)
     warmup_steps = cfg.training.warmup_epochs * len(train_loader)
@@ -220,7 +148,6 @@ def train(cfg: ExperimentConfig):
     else:
         scheduler = None
 
-    # Training loop
     log_file = log_dir / "training_log.csv"
     with open(log_file, "w", newline="") as f:
         csv.writer(f).writerow(["epoch", "train_loss", "val_top1", "val_top3", "val_top5", "val_nll", "lr", "time_s"])
@@ -268,7 +195,6 @@ def train(cfg: ExperimentConfig):
         if epoch % cfg.training.save_every == 0:
             torch.save(model.state_dict(), ckpt_dir / f"epoch_{epoch:03d}.pt")
 
-    # Load best
     best = torch.load(ckpt_dir / "best.pt", weights_only=False)
     model.load_state_dict(best["model_state_dict"])
     print(f"\nBest val top-1: {best_val_acc*100:.1f}% (epoch {best['epoch']})")
@@ -282,7 +208,6 @@ def train(cfg: ExperimentConfig):
     print(f"Test top-1={test_topk[1]*100:.1f}% | top-3={test_topk[3]*100:.1f}% | "
           f"top-5={test_topk[5]*100:.1f}% | nll={test_nll:.3f}")
 
-    # Calibration
     print("\n=== Calibration Analysis ===")
     all_probs, all_preds, all_labels = collect_predictions(model, test_loader, device)
     ece, _, _, _ = expected_calibration_error(all_probs, all_labels)
@@ -303,7 +228,6 @@ def train(cfg: ExperimentConfig):
     ece_post, _, _, _ = expected_calibration_error(scaled_probs, all_labels)
     print(f"ECE (post-temp): {ece_post:.4f}")
 
-    # Reliability diagrams
     try:
         reliability_diagram(all_probs, all_labels, save_path=str(fig_dir / "reliability_pre_temp.png"),
                             title=f"{system} - Before Temp Scaling")
@@ -312,7 +236,6 @@ def train(cfg: ExperimentConfig):
     except Exception:
         pass
 
-    # Per-group accuracy
     print(f"\n=== Per-Group Accuracy ({system}) ===")
     class_accs = per_class_accuracy(model, test_loader, device, num_classes)
     group_correct, group_total = {}, {}
@@ -324,13 +247,11 @@ def train(cfg: ExperimentConfig):
         if group_total[g] > 0:
             print(f"  Group {g}: {group_correct[g]/group_total[g]*100:.1f}% ({group_total[g]} classes)")
 
-    # Conformal prediction
     conformal_results = {}
     if cfg.conformal.enabled:
         print("\n=== Conformal Prediction ===")
         from genmod.evaluation.conformal import run_conformal_at_multiple_alphas
 
-        # Split val predictions into calibration and remaining
         val_probs, _, val_labels = collect_predictions(model, val_loader, device)
         n_cal = int(len(val_labels) * cfg.conformal.cal_fraction)
         cal_probs, cal_labels = val_probs[:n_cal], val_labels[:n_cal]
@@ -346,11 +267,10 @@ def train(cfg: ExperimentConfig):
         )
 
         for alpha, res in sorted(conformal_results.items()):
-            print(f"  α={alpha:.2f}: coverage={res['coverage']:.3f}, "
+            print(f"  alpha={alpha:.2f}: coverage={res['coverage']:.3f}, "
                   f"avg_set_size={res['avg_set_size']:.1f}, "
                   f"singleton={res['singleton_fraction']:.2f}")
 
-    # Embedding analysis
     print("\n=== Embedding Analysis ===")
     embeddings, emb_labels = extract_all_embeddings(model, test_loader, device)
     print(f"Extracted {embeddings.shape[0]} embeddings of dim {embeddings.shape[1]}")
@@ -364,7 +284,6 @@ def train(cfg: ExperimentConfig):
     except Exception as e:
         print(f"Skipping t-SNE: {e}")
 
-    # Linear probe for group
     try:
         group_targets = np.array([get_group_fn(l) for l in emb_labels])
         if len(np.unique(group_targets)) > 1:
@@ -375,7 +294,6 @@ def train(cfg: ExperimentConfig):
     except Exception:
         probe = {"accuracy_mean": 0.0, "accuracy_std": 0.0}
 
-    # Save results
     results = {
         "system": system,
         "config": cfg.name,
@@ -395,8 +313,6 @@ def train(cfg: ExperimentConfig):
     }
     if conformal_results:
         results["conformal"] = {str(k): v for k, v in conformal_results.items()}
-    if held_out:
-        results["held_out"] = held_out
 
     with open(log_dir / "results.json", "w") as f:
         json.dump(results, f, indent=2, default=str)
@@ -405,13 +321,11 @@ def train(cfg: ExperimentConfig):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train inverse generative model")
-    parser.add_argument("--config", type=str, default="configs/all_256_base.yaml")
-    parser.add_argument("--system", type=str, default=None)
+    parser = argparse.ArgumentParser(description="Train rule-tree classifier")
+    parser.add_argument("--config", type=str, default="configs/ruletree_base.yaml")
     parser.add_argument("--model_size", type=str, default=None)
     parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--batch_size", type=int, default=None)
-    parser.add_argument("--held_out_fraction", type=float, default=None)
     parser.add_argument("--positional_encoding", type=str, default=None)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--name", type=str, default=None)
@@ -421,16 +335,12 @@ def main():
 
     cfg = load_config(args.config)
 
-    if args.system:
-        cfg.data.system = args.system
     if args.model_size:
         cfg.model.model_size = args.model_size
     if args.epochs:
         cfg.training.epochs = args.epochs
     if args.batch_size:
         cfg.training.batch_size = args.batch_size
-    if args.held_out_fraction is not None:
-        cfg.data.held_out_fraction = args.held_out_fraction
     if args.positional_encoding:
         cfg.model.positional_encoding = args.positional_encoding
     if args.seed is not None:
