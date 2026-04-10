@@ -17,7 +17,9 @@ model:
   positional_encoding: time_space
 
 training:
-  batch_size: 32
+  # batch_size 16 fits comfortably on a 48GB L40S at fp32 (Hazel HPC).
+  # For 80GB+ cards (H100, H200, A100 80GB) you can safely raise to 32.
+  batch_size: 16
   lr: 3.0e-4
   weight_decay: 0.1
   grad_clip: 1.0
