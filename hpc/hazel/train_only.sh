@@ -4,30 +4,28 @@
 #BSUB -m "gpu_l40s"
 #BSUB -gpu "num=1"
 #BSUB -n 8
-#BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=64000]"
 #BSUB -W 12:00
 #BSUB -o results/logs/genmod-train.%J.out
 #BSUB -e results/logs/genmod-train.%J.err
 
-# Stage 3 of 3: train the rule-tree classifier on Hazel HPC.
+# Hazel HPC stage 3 of 3: train the rule-tree classifier on a GPU.
 #
-# Constrained to the gpu_l40s host group (NVIDIA L40S, 48GB VRAM).
-# At batch_size=16 (configs/ruletree_base.yaml) the model fits with
-# room to spare. To use H100 instead, change `-m "gpu_l40s"` to
+# Constrained to the gpu_l40s host group (NVIDIA L40S, 48 GB VRAM). At
+# batch_size=16 (configs/ruletree_base.yaml) the model fits with room
+# to spare. To use H100 instead, change `-m "gpu_l40s"` to
 # `-m "gpu_h100"`. To use H200, change to `-m "gpu_h200"`. Both have
-# 80GB+ VRAM and can use batch_size=32.
+# 80 GB+ VRAM and can use batch_size=32.
 #
-# Submit with a dependency on stage 2:
-#   bsub -w "done($SIM_JID)" < slurm/train_only_hazel.sh
+# Submission with a dependency on stage 2:
+#   bsub -w "done($SIM_JID)" < hpc/hazel/train_only.sh
 
 set -e
 
 source ~/.bashrc
 module load conda
-conda activate /usr/local/usrapps/cads/cdondim/genmod-env
+conda activate /usr/local/usrapps/cads/$USER/genmod-env
 
-# Reasonable thread counts for the dataloader
+# Reasonable thread counts for the dataloader.
 export OMP_NUM_THREADS=8
 export MKL_NUM_THREADS=8
 

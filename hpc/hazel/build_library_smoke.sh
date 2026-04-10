@@ -2,16 +2,14 @@
 #BSUB -J genmod-build-smoke
 #BSUB -q standard
 #BSUB -n 4
-#BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=8000]"
 #BSUB -W 00:30
 #BSUB -o results/logs/genmod-build-smoke.%J.out
 #BSUB -e results/logs/genmod-build-smoke.%J.err
 
-# Smoke stage 1 of 3: build a tiny rule-tree library on Hazel HPC.
+# Hazel HPC smoke stage 1 of 3: build a tiny rule-tree library.
 #
-# Generates 100 candidate trees at depth 2 (instead of 10000 at depth 3
-# in the production stage) and runs short 200-step probes for dedup.
+# Generates 100 candidate trees at depth 2 (instead of 10000 at depth
+# 3 in the production stage) and runs short 200-step probes for dedup.
 # Output goes to GENERATED_DATA_smoke so it does not collide with the
 # production GENERATED_DATA directory.
 
@@ -19,7 +17,7 @@ set -e
 
 source ~/.bashrc
 module load conda
-conda activate /usr/local/usrapps/cads/cdondim/genmod-env
+conda activate /usr/local/usrapps/cads/$USER/genmod-env
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1

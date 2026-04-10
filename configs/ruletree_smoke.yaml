@@ -2,7 +2,9 @@ name: ruletree_smoke
 
 # Smoke test config: tiny model, very few trees and runs.
 # Used to verify the full pipeline end-to-end before launching the
-# real experiment. Submit via slurm/train_ruletrees_smoke.sh on HPC.
+# real experiment. Submit via hpc/pasteur/train_ruletrees_smoke.sh on
+# Pasteur, or hpc/hazel/train_only_smoke.sh (preceded by the build +
+# simulate stages) on Hazel.
 
 data:
   system: rule_trees

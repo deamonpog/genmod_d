@@ -4,27 +4,25 @@
 #BSUB -m "gpu_l40s gpu_a30 gpu_a10"
 #BSUB -gpu "num=1"
 #BSUB -n 4
-#BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=16000]"
 #BSUB -W 00:30
 #BSUB -o results/logs/genmod-train-smoke.%J.out
 #BSUB -e results/logs/genmod-train-smoke.%J.err
 
-# Smoke stage 3 of 3: tiny model end-to-end training on Hazel HPC.
+# Hazel HPC smoke stage 3 of 3: tiny model end-to-end training on a GPU.
 #
 # Uses the tiny model (147K params) and short sequences from
 # configs/ruletree_smoke.yaml. Allows L40S, A30, or A10 since the smoke
 # model fits in any of them and a30 is currently 0% utilized (shortest
 # queue wait).
 #
-# Submit with a dependency on the smoke array:
-#   bsub -w "done($SMOKE_SIM_JID)" < slurm/train_only_smoke_hazel.sh
+# Submission with a dependency on the smoke array:
+#   bsub -w "done($SMOKE_SIM_JID)" < hpc/hazel/train_only_smoke.sh
 
 set -e
 
 source ~/.bashrc
 module load conda
-conda activate /usr/local/usrapps/cads/cdondim/genmod-env
+conda activate /usr/local/usrapps/cads/$USER/genmod-env
 
 export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=4

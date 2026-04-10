@@ -2,30 +2,29 @@
 #BSUB -J "genmod-sim[1-30]%8"
 #BSUB -q standard
 #BSUB -n 16
-#BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=32000]"
 #BSUB -W 04:00
 #BSUB -o results/logs/genmod-sim.%J.%I.out
 #BSUB -e results/logs/genmod-sim.%J.%I.err
 
-# Stage 2 of 3: simulate trees on Hazel HPC.
+# Hazel HPC stage 2 of 3: simulate trees.
 #
 # LSF job array: 30 tasks total, max 8 running concurrently. Each task
 # loads the previously-built tree library and simulates the slice
 # library[task_id*total/30 : (task_id+1)*total/30]. The slicing math
 # guarantees every label is covered exactly once.
 #
-# At 8 concurrent tasks * 16 cores = 128 cores at peak, well within the
-# standard queue's 1024 per-user limit.
+# %J in the output filename is the parent job ID, %I is the array task
+# index. LSB_JOBINDEX (1-based) holds the current task index inside
+# the script body.
 #
-# Submit with a dependency on stage 1:
-#   bsub -w "done($LIB_JID)" < slurm/simulate_array_hazel.sh
+# Submission with a dependency on stage 1:
+#   bsub -w "done($LIB_JID)" < hpc/hazel/simulate_array.sh
 
 set -e
 
 source ~/.bashrc
 module load conda
-conda activate /usr/local/usrapps/cads/cdondim/genmod-env
+conda activate /usr/local/usrapps/cads/$USER/genmod-env
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1

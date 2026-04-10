@@ -2,7 +2,7 @@
 # Setup conda environment on Pasteur HPC
 # Run this ONCE on the login node to create the environment
 #
-# Usage: bash slurm/setup_env.sh
+# Usage: bash hpc/pasteur/setup_env.sh
 
 set -e
 
@@ -30,5 +30,5 @@ echo "To activate: conda activate /data/apps/casl/arachchige/genmod-env"
 echo ""
 echo "Next steps:"
 echo "  1. Copy the GenMod project to /data/scratch/casl/$USER/ or /data/shared/"
-echo "  2. Submit smoke test with: sbatch slurm/train_ruletrees_smoke.sh"
-echo "  3. Submit full job with:   sbatch slurm/train_ruletrees.sh"
+echo "  2. Submit smoke test with: sbatch hpc/pasteur/train_ruletrees_smoke.sh"
+echo "  3. Submit full job with:   sbatch hpc/pasteur/train_ruletrees.sh"

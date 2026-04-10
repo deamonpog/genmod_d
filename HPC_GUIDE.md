@@ -4,12 +4,12 @@ This branch implements **Option D**: classification of Schelling segregation
 dynamics over auto-generated rule trees, with conformal prediction for
 uncertainty quantification.
 
-The codebase ships with two sets of HPC scripts side by side in `slurm/`:
+The codebase ships with two sets of HPC scripts in separate folders:
 
-| Cluster | Scheduler | Script suffix | Status |
+| Cluster | Scheduler | Script directory | Status |
 |---|---|---|---|
-| **Pasteur** (single 384-core fat node, 8x H200) | Slurm | `*.sh` | Default; use when Pasteur is online |
-| **NCSU Hazel** (multi-node, ~14000 cores, mixed GPUs) | LSF | `*_hazel.sh` | Backup during Pasteur maintenance |
+| **Pasteur** (single 384-core fat node, 8x H200) | Slurm (`sbatch`) | `hpc/pasteur/` | Default; use when Pasteur is online |
+| **NCSU Hazel** (multi-node, ~14000 cores, mixed GPUs) | LSF (`bsub`) | `hpc/hazel/` | Backup during Pasteur maintenance |
 
 If Pasteur is up, use the Slurm scripts (Step 1 onward below). If Pasteur
 is in maintenance, jump to **"Running on NCSU Hazel HPC (LSF)"** at the
@@ -50,7 +50,7 @@ scp -r genmod_d pasteur-login:/data/scratch/casl/$USER/
 ssh pasteur-login
 
 cd /data/scratch/casl/$USER/genmod_d
-bash slurm/setup_env.sh
+bash hpc/pasteur/setup_env.sh
 ```
 
 This creates a conda environment at `/data/apps/casl/arachchige/genmod-env`
@@ -61,7 +61,7 @@ will always return `False` there. Test on a GPU node via an interactive srun:
 
 ```bash
 srun --partition=debug --gres=gpu:1 --time=00:10:00 --mem=8G --pty \
-    bash slurm/fix_pytorch_cuda.sh test
+    bash hpc/pasteur/fix_pytorch_cuda.sh test
 ```
 
 That activates the env, runs `nvidia-smi`, and runs a small CUDA matmul to
@@ -69,7 +69,7 @@ confirm everything works. If PyTorch reports CUDA unavailable, reinstall the
 GPU build from the login node:
 
 ```bash
-bash slurm/fix_pytorch_cuda.sh install
+bash hpc/pasteur/fix_pytorch_cuda.sh install
 ```
 
 then re-run the interactive test above.
@@ -81,11 +81,11 @@ cd /data/scratch/casl/$USER/genmod_d
 mkdir -p results/logs
 
 # Smoke test first (debug partition, ~10 minutes)
-sbatch slurm/train_ruletrees_smoke.sh
+sbatch hpc/pasteur/train_ruletrees_smoke.sh
 
 # Once smoke test passes, submit the full job
 # (standard partition, 64 CPUs for parallel data gen, ~3-4h wall clock)
-sbatch slurm/train_ruletrees.sh
+sbatch hpc/pasteur/train_ruletrees.sh
 ```
 
 The full job:
@@ -141,10 +141,10 @@ scp -r pasteur-login:/data/scratch/casl/$USER/genmod_d/results/ ./results/
 
 | Script | Partition | Time | Purpose |
 |--------|-----------|------|---------|
-| `slurm/setup_env.sh` | login | n/a | One-time conda env setup |
-| `slurm/fix_pytorch_cuda.sh` | n/a | n/a | Reinstall PyTorch CUDA build |
-| `slurm/train_ruletrees_smoke.sh` | debug | 30 min | End-to-end smoke test |
-| `slurm/train_ruletrees.sh` | standard | 48 h | Full Option D experiment |
+| `hpc/pasteur/setup_env.sh` | login | n/a | One-time conda env setup |
+| `hpc/pasteur/fix_pytorch_cuda.sh` | n/a | n/a | Reinstall PyTorch CUDA build |
+| `hpc/pasteur/train_ruletrees_smoke.sh` | debug | 30 min | End-to-end smoke test |
+| `hpc/pasteur/train_ruletrees.sh` | standard | 48 h | Full Option D experiment |
 
 ### Pasteur custom runs
 
@@ -183,7 +183,7 @@ fingerprinting; output is bit-identical to the serial path.
 has 143 GB so this should not happen at the default batch size 16.
 
 **"Missing tree_library.json"**: run the data-generation script first, or
-re-submit `slurm/train_ruletrees.sh` (it will auto-generate if absent).
+re-submit `hpc/pasteur/train_ruletrees.sh` (it will auto-generate if absent).
 
 **"Module not found"**: activate the conda env:
 ```bash
@@ -230,7 +230,7 @@ cd /share/cads/$USER/genmod_d
 # One-time conda env setup. This script also writes ~/.condarc to
 # redirect the conda packages cache to /share/cads/$USER/conda/pkgs
 # (otherwise conda will fill the 15 GB home quota).
-bash slurm/setup_env_hazel.sh
+bash hpc/hazel/setup_env.sh
 ```
 
 The env lives at `/usr/local/usrapps/cads/cdondim/genmod-env`. To verify
@@ -258,9 +258,9 @@ stages with chained dependencies:
 cd /share/cads/$USER/genmod_d
 mkdir -p results/logs
 
-LIB=$(bsub < slurm/build_library_smoke_hazel.sh    | awk '{print $2}' | tr -d '<>')
-SIM=$(bsub -w "done($LIB)" < slurm/simulate_array_smoke_hazel.sh | awk '{print $2}' | tr -d '<>')
-TR=$(bsub  -w "done($SIM)" < slurm/train_only_smoke_hazel.sh    | awk '{print $2}' | tr -d '<>')
+LIB=$(bsub < hpc/hazel/build_library_smoke.sh    | awk '{print $2}' | tr -d '<>')
+SIM=$(bsub -w "done($LIB)" < hpc/hazel/simulate_array_smoke.sh | awk '{print $2}' | tr -d '<>')
+TR=$(bsub  -w "done($SIM)" < hpc/hazel/train_only_smoke.sh    | awk '{print $2}' | tr -d '<>')
 echo "smoke: lib=$LIB sim=$SIM train=$TR"
 ```
 
@@ -280,9 +280,9 @@ scripts:
 cd /share/cads/$USER/genmod_d
 mkdir -p results/logs
 
-LIB=$(bsub < slurm/build_library_hazel.sh    | awk '{print $2}' | tr -d '<>')
-SIM=$(bsub -w "done($LIB)" < slurm/simulate_array_hazel.sh | awk '{print $2}' | tr -d '<>')
-TR=$(bsub  -w "done($SIM)" < slurm/train_only_hazel.sh    | awk '{print $2}' | tr -d '<>')
+LIB=$(bsub < hpc/hazel/build_library.sh    | awk '{print $2}' | tr -d '<>')
+SIM=$(bsub -w "done($LIB)" < hpc/hazel/simulate_array.sh | awk '{print $2}' | tr -d '<>')
+TR=$(bsub  -w "done($SIM)" < hpc/hazel/train_only.sh    | awk '{print $2}' | tr -d '<>')
 echo "full: lib=$LIB sim=$SIM train=$TR"
 ```
 
@@ -303,13 +303,13 @@ bqueues -u $USER                # which queues you have access to
 
 | Script | Queue | Resources | Purpose |
 |--------|-------|-----------|---------|
-| `slurm/setup_env_hazel.sh` | login | interactive | One-time conda env setup |
-| `slurm/build_library_hazel.sh` | standard | 16 CPUs, 32G, 4h | Stage 1: build tree library |
-| `slurm/simulate_array_hazel.sh` | standard | array 1-30 %8, 16 CPUs each | Stage 2: simulate trees |
-| `slurm/train_only_hazel.sh` | gpu | 1x L40S, 8 CPUs, 64G, 12h | Stage 3: train classifier |
-| `slurm/build_library_smoke_hazel.sh` | standard | 4 CPUs, 8G, 30m | Smoke stage 1 |
-| `slurm/simulate_array_smoke_hazel.sh` | standard | array 1-3 %2, 4 CPUs each | Smoke stage 2 |
-| `slurm/train_only_smoke_hazel.sh` | gpu | 1x small GPU, 4 CPUs, 16G, 30m | Smoke stage 3 |
+| `hpc/hazel/setup_env.sh` | login | interactive | One-time conda env setup |
+| `hpc/hazel/build_library.sh` | standard | 16 CPUs, 4h | Stage 1: build tree library |
+| `hpc/hazel/simulate_array.sh` | standard | array 1-30 %8, 16 CPUs each | Stage 2: simulate trees |
+| `hpc/hazel/train_only.sh` | gpu | 1x L40S, 8 CPUs, 12h | Stage 3: train classifier |
+| `hpc/hazel/build_library_smoke.sh` | standard | 4 CPUs, 30m | Smoke stage 1 |
+| `hpc/hazel/simulate_array_smoke.sh` | standard | array 1-3 %2, 4 CPUs each | Smoke stage 2 |
+| `hpc/hazel/train_only_smoke.sh` | gpu | 1x small GPU, 4 CPUs, 30m | Smoke stage 3 |
 
 ### Hazel: Expected runtimes
 
@@ -325,7 +325,7 @@ bqueues -u $USER                # which queues you have access to
 **"User not authorized to use queue"**: try a different queue. The
 production scripts default to `-q standard`. If you have access to a
 private group queue, edit the `#BSUB -q` line in
-`slurm/build_library_hazel.sh` and `slurm/simulate_array_hazel.sh`. To
+`hpc/hazel/build_library.sh` and `hpc/hazel/simulate_array.sh`. To
 see your queue access from the login node:
 ```bash
 bqueues -u $USER
@@ -346,5 +346,5 @@ still OOM, drop to `--batch_size 8` on the CLI or in the YAML.
 do not forget it.
 
 **Pasteur is back online**: switch back to the Pasteur slurm scripts at
-the top of this file. The `*_hazel.sh` files can stay in `slurm/` for
-the next maintenance cycle.
+the top of this file. The `hpc/hazel/` scripts stay in place for the
+next maintenance cycle.

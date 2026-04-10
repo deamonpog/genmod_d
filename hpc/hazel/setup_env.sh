@@ -1,19 +1,19 @@
 #!/bin/bash
-# One-time conda env setup on Hazel HPC for the cads/cdondim project.
+# One-time conda env setup on Hazel HPC.
+#
 # Run interactively from a Hazel login node:
 #
-#   bash slurm/setup_env_hazel.sh
+#   bash hpc/hazel/setup_env.sh
 #
 # This script:
 #   1. Writes ~/.condarc to redirect the conda packages cache to
 #      /share/cads/$USER/conda/pkgs (so it does NOT fill the 15 GB home
 #      quota).
 #   2. Creates a conda env at /usr/local/usrapps/cads/$USER/genmod-env
-#   3. Installs PyTorch (CUDA 12.4) + project dependencies via pip.
+#   3. Installs PyTorch (CUDA 12.4) plus the project Python dependencies.
 #
-# If you are a different user in the cads group, just change GROUP / the
-# usrapps path below. If you belong to a different group entirely, change
-# both.
+# Hardcoded for the cads project group. Edit the GROUP variable below if
+# you belong to a different group.
 
 set -e
 
@@ -43,11 +43,12 @@ mkdir -p "$PKGS_DIR"
 module load conda
 conda create --prefix "$ENV_DIR" python=3.11 -y
 
-# Hazel docs require source ~/.bashrc before conda activate in jobs.
+# Hazel docs require sourcing ~/.bashrc before conda activate in jobs.
 source ~/.bashrc
 conda activate "$ENV_DIR"
 
-# Step 3: install PyTorch (CUDA 12.4 build works on H100, L40S, A100, etc)
+# Step 3: install dependencies. CUDA 12.4 build of PyTorch works on
+# H100, L40S, A100, and other current Hazel GPUs.
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 pip install pyyaml umap-learn seaborn scikit-learn matplotlib
 

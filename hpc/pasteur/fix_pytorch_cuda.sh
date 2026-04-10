@@ -2,11 +2,11 @@
 # Fix PyTorch CUDA in existing environment
 #
 # Step 1: Run the pip install from the login node (no GPU needed for install):
-#     bash slurm/fix_pytorch_cuda.sh install
+#     bash hpc/pasteur/fix_pytorch_cuda.sh install
 #
 # Step 2: Test GPU access in an interactive job:
 #     srun --partition=debug --gres=gpu:1 --time=00:10:00 --mem=8G --pty \
-#         bash slurm/fix_pytorch_cuda.sh test
+#         bash hpc/pasteur/fix_pytorch_cuda.sh test
 
 set -e
 
@@ -20,7 +20,7 @@ if [ "$ACTION" = "install" ]; then
     pip install --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
     echo ""
     echo "Done. Now test GPU access with:"
-    echo "  srun --partition=debug --gres=gpu:1 --time=00:10:00 --mem=8G --pty bash slurm/fix_pytorch_cuda.sh test"
+    echo "  srun --partition=debug --gres=gpu:1 --time=00:10:00 --mem=8G --pty bash hpc/pasteur/fix_pytorch_cuda.sh test"
 
 elif [ "$ACTION" = "test" ]; then
     echo "=== GPU Test ==="
@@ -39,6 +39,6 @@ if torch.cuda.is_available():
     y = x @ x
     print(f'Matrix multiply on GPU: OK ({y.shape})')
 else:
-    print('ERROR: CUDA not available. Reinstall PyTorch with: bash slurm/fix_pytorch_cuda.sh install')
+    print('ERROR: CUDA not available. Reinstall PyTorch with: bash hpc/pasteur/fix_pytorch_cuda.sh install')
 "
 fi

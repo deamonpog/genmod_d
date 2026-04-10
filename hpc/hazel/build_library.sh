@@ -2,31 +2,29 @@
 #BSUB -J genmod-build
 #BSUB -q standard
 #BSUB -n 16
-#BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=32000]"
 #BSUB -W 04:00
 #BSUB -o results/logs/genmod-build.%J.out
 #BSUB -e results/logs/genmod-build.%J.err
 
-# Stage 1 of 3: build the rule-tree library on Hazel HPC.
+# Hazel HPC stage 1 of 3: build the rule-tree library.
 #
 # Generates 10000 candidate trees, deduplicates structurally and
 # behaviorally via probe simulations, and writes the result to
-# GENERATED_DATA/rule_trees/tree_library.json. CPU only.
+# GENERATED_DATA/rule_trees/tree_library.json.
 #
 # Submission:
-#   bsub < slurm/build_library_hazel.sh
+#   bsub < hpc/hazel/build_library.sh
 #
 # To chain stages 2 and 3 automatically:
-#   LIB=$(bsub < slurm/build_library_hazel.sh | awk '{print $2}' | tr -d '<>')
-#   SIM=$(bsub -w "done($LIB)" < slurm/simulate_array_hazel.sh | awk '{print $2}' | tr -d '<>')
-#   TR=$(bsub  -w "done($SIM)" < slurm/train_only_hazel.sh    | awk '{print $2}' | tr -d '<>')
+#   LIB=$(bsub < hpc/hazel/build_library.sh   | awk '{print $2}' | tr -d '<>')
+#   SIM=$(bsub -w "done($LIB)" < hpc/hazel/simulate_array.sh | awk '{print $2}' | tr -d '<>')
+#   TR=$(bsub  -w "done($SIM)" < hpc/hazel/train_only.sh    | awk '{print $2}' | tr -d '<>')
 
 set -e
 
 source ~/.bashrc
 module load conda
-conda activate /usr/local/usrapps/cads/cdondim/genmod-env
+conda activate /usr/local/usrapps/cads/$USER/genmod-env
 
 # Prevent BLAS / OpenMP threads from oversubscribing while our Python
 # multiprocessing pool is running. The simulator is pure Python so this

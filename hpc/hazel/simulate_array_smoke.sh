@@ -2,31 +2,29 @@
 #BSUB -J "genmod-sim-smoke[1-3]%2"
 #BSUB -q standard
 #BSUB -n 4
-#BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=8000]"
 #BSUB -W 00:30
 #BSUB -o results/logs/genmod-sim-smoke.%J.%I.out
 #BSUB -e results/logs/genmod-sim-smoke.%J.%I.err
 
-# Smoke stage 2 of 3: 3-task LSF array on Hazel HPC.
+# Hazel HPC smoke stage 2 of 3: 3-task LSF array.
 #
-# This deliberately mirrors the production array submission (just smaller)
-# so we exercise:
-#   - LSF array syntax  -J "name[1-N]%K"
-#   - LSB_JOBINDEX in shell
+# Deliberately mirrors the production array submission (just smaller)
+# so we exercise the LSF features the production run depends on:
+#   - Array syntax  -J "name[1-N]%K"
+#   - LSB_JOBINDEX in the script body
 #   - --n_tasks / --task_id flags in generate_ruletrees.py
 #   - Slice math: with ~30-50 unique trees (after dedup), 3 slices give
 #     each task ~10-17 trees to simulate. None should be empty.
 #   - %J.%I in output filenames
 #
-# Submit with a dependency on the smoke build:
-#   bsub -w "done($SMOKE_LIB_JID)" < slurm/simulate_array_smoke_hazel.sh
+# Submission with a dependency on the smoke build:
+#   bsub -w "done($SMOKE_LIB_JID)" < hpc/hazel/simulate_array_smoke.sh
 
 set -e
 
 source ~/.bashrc
 module load conda
-conda activate /usr/local/usrapps/cads/cdondim/genmod-env
+conda activate /usr/local/usrapps/cads/$USER/genmod-env
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
