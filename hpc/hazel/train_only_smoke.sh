@@ -1,7 +1,6 @@
 #!/bin/bash
 #BSUB -J genmod-train-smoke
 #BSUB -q gpu
-#BSUB -R "select[l40s||a30||a10]"
 #BSUB -gpu "num=1"
 #BSUB -n 4
 #BSUB -W 00:30
@@ -11,9 +10,10 @@
 # Hazel HPC smoke stage 3 of 3: tiny model end-to-end training on a GPU.
 #
 # Uses the tiny model (147K params) and short sequences from
-# configs/ruletree_smoke.yaml. Allows L40S, A30, or A10 since the smoke
-# model fits in any of them and a30 is currently 0% utilized (shortest
-# queue wait).
+# configs/ruletree_smoke.yaml. The smoke model is small enough to fit
+# in any Hazel GPU including the older 8 GB cards, so we do not
+# constrain GPU type and let LSF assign whichever is free fastest.
+# To force a specific type, add `:type=l40s` (etc.) to the -gpu line.
 #
 # Submission with a dependency on the smoke array:
 #   bsub -w "done($SMOKE_SIM_JID)" < hpc/hazel/train_only_smoke.sh
