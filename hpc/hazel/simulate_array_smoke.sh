@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -J "genmod-sim-smoke[1-3]%2"
 #BSUB -q standard
-#BSUB -n 4
+#BSUB -n 16
 #BSUB -W 00:30
 #BSUB -o results/logs/genmod-sim-smoke.%J.%I.out
 #BSUB -e results/logs/genmod-sim-smoke.%J.%I.err
@@ -50,7 +50,7 @@ python scripts/generate_ruletrees.py \
     --snapshot_ticks 50,100,150,200 \
     --output_dir GENERATED_DATA_smoke \
     --seed 42 \
-    --workers 4
+    --workers 16
 
 echo
 echo "Finished: $(date)"

@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -J genmod-build-smoke
 #BSUB -q standard
-#BSUB -n 4
+#BSUB -n 16
 #BSUB -W 00:30
 #BSUB -o results/logs/genmod-build-smoke.%J.out
 #BSUB -e results/logs/genmod-build-smoke.%J.err
@@ -40,7 +40,7 @@ python scripts/generate_ruletrees.py \
     --max_steps 200 \
     --output_dir GENERATED_DATA_smoke \
     --seed 42 \
-    --workers 4
+    --workers 16
 
 echo
 echo "Finished: $(date)"
