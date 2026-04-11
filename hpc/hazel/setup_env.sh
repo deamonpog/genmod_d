@@ -50,7 +50,7 @@ conda activate "$ENV_DIR"
 # Step 3: install dependencies. CUDA 12.4 build of PyTorch works on
 # H100, L40S, A100, and other current Hazel GPUs.
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-pip install pyyaml umap-learn seaborn scikit-learn matplotlib
+pip install numpy pyyaml umap-learn seaborn scikit-learn matplotlib
 
 echo
 echo "Done. Environment created at: $ENV_DIR"
