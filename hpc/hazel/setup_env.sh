@@ -96,26 +96,23 @@ python <<'PY'
 import importlib, sys
 
 required = [
-    ("torch", "torch.__version__"),
-    ("numpy", "numpy.__version__"),
-    ("yaml", "yaml.__version__"),
-    ("sklearn", "sklearn.__version__"),
-    ("matplotlib", "matplotlib.__version__"),
-    ("seaborn", "seaborn.__version__"),
-    ("umap", None),  # umap-learn has no simple __version__
+    "torch",
+    "numpy",
+    "yaml",
+    "sklearn",
+    "matplotlib",
+    "seaborn",
+    "umap",
 ]
 
 print()
-print(f"  python  : {sys.version.split()[0]} @ {sys.executable}")
+print(f"  python    : {sys.version.split()[0]} @ {sys.executable}")
 fail = False
-for name, ver_expr in required:
+for name in required:
     try:
         mod = importlib.import_module(name)
-        if ver_expr:
-            v = eval(ver_expr)
-            print(f"  {name:10s}: {v}")
-        else:
-            print(f"  {name:10s}: OK")
+        version = getattr(mod, "__version__", "unknown")
+        print(f"  {name:10s}: {version}")
     except Exception as e:
         print(f"  {name:10s}: FAIL ({e.__class__.__name__}: {e})")
         fail = True
