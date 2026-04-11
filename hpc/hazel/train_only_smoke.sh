@@ -1,5 +1,6 @@
 #!/bin/bash
 #BSUB -J genmod-train-smoke
+#BSUB -q short_gpu
 #BSUB -gpu "num=1"
 #BSUB -n 4
 #BSUB -R "span[hosts=1]"
@@ -11,9 +12,17 @@
 #
 # Uses the tiny model (147K params) and short sequences from
 # configs/ruletree_smoke.yaml. The smoke model is small enough to fit
-# in any Hazel GPU including the older 8 GB cards, so we do not
-# constrain GPU type and let LSF assign whichever is free fastest.
-# To force a specific type, add `:type=l40s` (etc.) to the -gpu line.
+# in any Hazel GPU including older 8 GB cards, so we do NOT constrain
+# GPU type and let LSF assign whichever is free fastest.
+#
+# Note: unlike the CPU smoke jobs, this one cannot rely on Hazel's
+# default-queue fallback chain (debug -> serial -> short -> ...) since
+# none of those accept GPU jobs. `short_gpu` is the GPU counterpart of
+# `debug` -- priority 62, 64 slots per user, 2h max runtime -- and is
+# the right queue for short/interactive GPU smoke tests.
+#
+# To force a specific GPU type on Hazel, use `-R "select[<model>]"`
+# e.g. `-R "select[l40s] span[hosts=1]"`.
 #
 # Submission with a dependency on the smoke array:
 #   bsub -w "done($SMOKE_SIM_JID)" < hpc/hazel/train_only_smoke.sh
