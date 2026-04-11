@@ -1,0 +1,152 @@
+#!/bin/bash
+# Hazel HPC env health check.
+#
+# Can be run two ways:
+#
+# 1. Interactive on a GPU node (recommended, tests CUDA too):
+#
+#      bsub -Is -q short_gpu -gpu "num=1" -n 2 -R "span[hosts=1]" \
+#           -W 00:10 bash hpc/hazel/verify_env.sh
+#
+# 2. Directly as a bash script (without bsub) on whatever node you are
+#    on. CUDA checks will return False on login nodes, which is expected
+#    and NOT a failure -- login nodes have no GPU.
+#
+# This script does NOT use `set -e`. The conda activation chain emits
+# non-zero internal substeps that would kill it.
+
+GROUP=cads
+ENV_DIR="/usr/local/usrapps/${GROUP}/${USER}/genmod-env"
+
+echo "========================================================"
+echo "Hazel env verification"
+echo "========================================================"
+echo "  host    : $(hostname)"
+echo "  user    : ${USER}"
+echo "  env dir : ${ENV_DIR}"
+echo
+
+# ---- Activate the env ----
+if [ ! -d "$ENV_DIR" ]; then
+    echo "FAIL: env not found at $ENV_DIR"
+    echo "Run hpc/hazel/setup_env.sh first."
+    exit 1
+fi
+
+source ~/.bashrc
+module load conda
+conda activate "$ENV_DIR"
+
+# ---- Basic env info ----
+echo "--- Environment info ---"
+echo "  python : $(which python)"
+echo "  python version : $(python --version)"
+echo
+
+# ---- nvidia-smi (only if we're on a GPU node) ----
+echo "--- GPU hardware (nvidia-smi) ---"
+if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader 2>/dev/null \
+        || echo "  nvidia-smi present but failed (are we on a GPU node?)"
+else
+    echo "  nvidia-smi not found (expected on login nodes)"
+fi
+echo
+
+# ---- Full import + CUDA check in Python ----
+python <<'PY'
+import importlib, sys, traceback
+
+print("--- Python package imports ---")
+
+required = [
+    ("torch", "torch.__version__"),
+    ("numpy", "numpy.__version__"),
+    ("yaml", "yaml.__version__"),
+    ("sklearn", "sklearn.__version__"),
+    ("matplotlib", "matplotlib.__version__"),
+    ("seaborn", "seaborn.__version__"),
+    ("umap", None),
+]
+fail = False
+for name, ver_expr in required:
+    try:
+        mod = importlib.import_module(name)
+        if ver_expr:
+            v = eval(ver_expr)
+            print(f"  {name:12s}: {v}")
+        else:
+            print(f"  {name:12s}: OK")
+    except Exception as e:
+        print(f"  {name:12s}: FAIL ({e.__class__.__name__}: {e})")
+        fail = True
+
+print()
+print("--- Torch / CUDA ---")
+import torch
+print(f"  torch.__version__             : {torch.__version__}")
+print(f"  torch.version.cuda            : {torch.version.cuda}")
+print(f"  torch.cuda.is_available()     : {torch.cuda.is_available()}")
+print(f"  torch.cuda.device_count()     : {torch.cuda.device_count()}")
+
+if torch.cuda.is_available():
+    for i in range(torch.cuda.device_count()):
+        print(f"  torch.cuda.get_device_name({i}) : {torch.cuda.get_device_name(i)}")
+
+    # Tiny compute test: a matmul on GPU to confirm CUDA works end-to-end.
+    try:
+        x = torch.randn(512, 512, device="cuda")
+        y = x @ x
+        s = float(y.sum().cpu().item())
+        print(f"  512x512 matmul on GPU         : OK (sum={s:.2f})")
+    except Exception as e:
+        print(f"  512x512 matmul on GPU         : FAIL")
+        traceback.print_exc()
+        fail = True
+else:
+    print("  (no CUDA device visible -- this is expected on login nodes)")
+
+print()
+print("--- Project imports ---")
+sys.path.insert(0, ".")
+project_modules = [
+    "genmod.data.rule_trees",
+    "genmod.data.tree_generators",
+    "genmod.data.schelling_ruletree",
+    "genmod.data.ruletree_dataset",
+    "genmod.data.ruletree_metadata",
+    "genmod.data.schelling_dataset",
+    "genmod.data.splits",
+    "genmod.models.factory",
+    "genmod.models.transformer",
+    "genmod.evaluation.metrics",
+    "genmod.evaluation.calibration",
+    "genmod.evaluation.conformal",
+    "genmod.evaluation.embeddings",
+    "genmod.utils.config",
+]
+for mod_name in project_modules:
+    try:
+        importlib.import_module(mod_name)
+        print(f"  {mod_name:45s}: OK")
+    except Exception as e:
+        print(f"  {mod_name:45s}: FAIL ({e.__class__.__name__}: {e})")
+        fail = True
+
+print()
+if fail:
+    print("VERIFICATION FAILED")
+    sys.exit(1)
+print("ALL CHECKS PASSED")
+PY
+
+rc=$?
+echo
+echo "========================================================"
+if [ $rc -eq 0 ]; then
+    echo "Verification OK"
+else
+    echo "Verification FAILED (exit $rc)"
+fi
+echo "========================================================"
+exit $rc
