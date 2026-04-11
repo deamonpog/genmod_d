@@ -2,6 +2,7 @@
 #BSUB -J "genmod-sim[1-30]%8"
 #BSUB -q standard
 #BSUB -n 16
+#BSUB -R "span[hosts=1]"
 #BSUB -W 04:00
 #BSUB -o results/logs/genmod-sim.%J.%I.out
 #BSUB -e results/logs/genmod-sim.%J.%I.err

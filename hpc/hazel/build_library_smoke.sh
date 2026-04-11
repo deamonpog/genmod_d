@@ -1,6 +1,7 @@
 #!/bin/bash
 #BSUB -J genmod-build-smoke
 #BSUB -n 16
+#BSUB -R "span[hosts=1]"
 #BSUB -W 00:30
 #BSUB -o results/logs/genmod-build-smoke.%J.out
 #BSUB -e results/logs/genmod-build-smoke.%J.err

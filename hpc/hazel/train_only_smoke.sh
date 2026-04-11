@@ -2,6 +2,7 @@
 #BSUB -J genmod-train-smoke
 #BSUB -gpu "num=1"
 #BSUB -n 4
+#BSUB -R "span[hosts=1]"
 #BSUB -W 00:30
 #BSUB -o results/logs/genmod-train-smoke.%J.out
 #BSUB -e results/logs/genmod-train-smoke.%J.err

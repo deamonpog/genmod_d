@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -J genmod-train
 #BSUB -q gpu
-#BSUB -R "select[l40s]"
+#BSUB -R "select[l40s] span[hosts=1]"
 #BSUB -gpu "num=1"
 #BSUB -n 8
 #BSUB -W 12:00

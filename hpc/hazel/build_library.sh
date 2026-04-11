@@ -2,6 +2,7 @@
 #BSUB -J genmod-build
 #BSUB -q standard
 #BSUB -n 16
+#BSUB -R "span[hosts=1]"
 #BSUB -W 04:00
 #BSUB -o results/logs/genmod-build.%J.out
 #BSUB -e results/logs/genmod-build.%J.err
