@@ -1,6 +1,5 @@
 #!/bin/bash
 #BSUB -J genmod-build-smoke
-#BSUB -q standard
 #BSUB -n 16
 #BSUB -W 00:30
 #BSUB -o results/logs/genmod-build-smoke.%J.out

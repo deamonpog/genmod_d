@@ -1,6 +1,5 @@
 #!/bin/bash
 #BSUB -J "genmod-sim-smoke[1-3]%2"
-#BSUB -q standard
 #BSUB -n 16
 #BSUB -W 00:30
 #BSUB -o results/logs/genmod-sim-smoke.%J.%I.out

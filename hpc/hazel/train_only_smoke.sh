@@ -1,6 +1,5 @@
 #!/bin/bash
 #BSUB -J genmod-train-smoke
-#BSUB -q gpu
 #BSUB -gpu "num=1"
 #BSUB -n 4
 #BSUB -W 00:30
