@@ -26,11 +26,14 @@
 # Submission with a dependency on stage 2:
 #   bsub -w "done($SIM_JID)" < hpc/hazel/train_only.sh
 
-set -e
-
+# Activate conda BEFORE `set -e`; the activation chain emits internal
+# non-zero exits that `set -e` would catch and abort on, even though
+# the overall activation succeeds.
 source ~/.bashrc
 module load conda
 conda activate /usr/local/usrapps/cads/$USER/genmod-env
+
+set -e
 
 # Reasonable thread counts for the dataloader.
 export OMP_NUM_THREADS=8

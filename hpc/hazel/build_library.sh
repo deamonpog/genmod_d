@@ -21,11 +21,14 @@
 #   SIM=$(bsub -w "done($LIB)" < hpc/hazel/simulate_array.sh | awk '{print $2}' | tr -d '<>')
 #   TR=$(bsub  -w "done($SIM)" < hpc/hazel/train_only.sh    | awk '{print $2}' | tr -d '<>')
 
-set -e
-
+# Activate conda BEFORE `set -e`; the activation chain emits internal
+# non-zero exits that `set -e` would catch and abort on, even though
+# the overall activation succeeds.
 source ~/.bashrc
 module load conda
 conda activate /usr/local/usrapps/cads/$USER/genmod-env
+
+set -e
 
 # Prevent BLAS / OpenMP threads from oversubscribing while our Python
 # multiprocessing pool is running. The simulator is pure Python so this

@@ -13,11 +13,16 @@
 # Output goes to GENERATED_DATA_smoke so it does not collide with the
 # production GENERATED_DATA directory.
 
-set -e
-
+# Activate the conda env BEFORE turning on `set -e`. The conda
+# activation chain (source ~/.bashrc -> module load conda -> conda
+# activate) emits non-zero exit codes from internal substeps that
+# `set -e` would catch and abort the script on, even though the
+# overall activation succeeds. Order matters: env first, then strict.
 source ~/.bashrc
 module load conda
 conda activate /usr/local/usrapps/cads/$USER/genmod-env
+
+set -e
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
@@ -28,6 +33,7 @@ mkdir -p results/logs results/checkpoints results/figures
 echo "=== Smoke build tree library ==="
 echo "Host:    $(hostname)"
 echo "JobID:   $LSB_JOBID"
+echo "Python:  $(which python)"
 echo "Started: $(date)"
 echo
 

@@ -20,11 +20,14 @@
 # Submission with a dependency on the smoke build:
 #   bsub -w "done($SMOKE_LIB_JID)" < hpc/hazel/simulate_array_smoke.sh
 
-set -e
-
+# Activate conda BEFORE `set -e`; the activation chain emits internal
+# non-zero exits that `set -e` would catch and abort on, even though
+# the overall activation succeeds.
 source ~/.bashrc
 module load conda
 conda activate /usr/local/usrapps/cads/$USER/genmod-env
+
+set -e
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1

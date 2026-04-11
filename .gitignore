@@ -8,3 +8,5 @@ results/logs/genmod-*.err
 .vscode/
 .claude/
 *.pt
+helper/
+tmp/
