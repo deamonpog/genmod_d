@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -J genmod-train-smoke
 #BSUB -q gpu
-#BSUB -m "gpu_l40s gpu_a30 gpu_a10"
+#BSUB -R "select[l40s||a30||a10]"
 #BSUB -gpu "num=1"
 #BSUB -n 4
 #BSUB -W 00:30

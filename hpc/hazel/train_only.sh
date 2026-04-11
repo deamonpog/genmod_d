@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -J genmod-train
 #BSUB -q gpu
-#BSUB -m "gpu_l40s"
+#BSUB -R "select[l40s]"
 #BSUB -gpu "num=1"
 #BSUB -n 8
 #BSUB -W 12:00
@@ -10,11 +10,12 @@
 
 # Hazel HPC stage 3 of 3: train the rule-tree classifier on a GPU.
 #
-# Constrained to the gpu_l40s host group (NVIDIA L40S, 48 GB VRAM). At
+# Constrained to L40S hosts (NVIDIA L40S, 48 GB VRAM). At
 # batch_size=16 (configs/ruletree_base.yaml) the model fits with room
-# to spare. To use H100 instead, change `-m "gpu_l40s"` to
-# `-m "gpu_h100"`. To use H200, change to `-m "gpu_h200"`. Both have
-# 80 GB+ VRAM and can use batch_size=32.
+# to spare. To use H100 instead, change the -R select line to
+# `select[h100]`. To use H200, change to `select[h200]`. Both have
+# 80 GB+ VRAM and can use batch_size=32. Each GPU host carries its
+# model name as a boolean LSF resource (l40s, h100, h200, a100, ...).
 #
 # Submission with a dependency on stage 2:
 #   bsub -w "done($SIM_JID)" < hpc/hazel/train_only.sh
