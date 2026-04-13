@@ -277,10 +277,26 @@ def generate_ruletree_data(
     snapshot_ticks=None,
     output_dir="GENERATED_DATA/rule_trees",
     verbose=True,
+    skip_existing=True,
 ):
-    """Run a tree num_runs times and save the runs to a single JSON file."""
+    """Run a tree num_runs times and save the runs to a single JSON file.
+
+    If `skip_existing` is True (default) and the target JSON already
+    exists, return immediately without regenerating. This makes the
+    function safe to re-run after a partial failure: previously
+    completed trees are left untouched.
+    """
     if snapshot_ticks is None:
         snapshot_ticks = [100, 200, 300, 400, 500]
+
+    out_path = Path(output_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+    filename = out_path / "ruletree_{:04d}.json".format(label)
+
+    if skip_existing and filename.exists():
+        if verbose:
+            print("  tree label {}: SKIP (already exists)".format(label))
+        return
 
     runs = []
     for i in range(num_runs):
@@ -295,9 +311,6 @@ def generate_ruletree_data(
         run["label"] = label
         runs.append(run)
 
-    out_path = Path(output_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
-    filename = out_path / "ruletree_{:04d}.json".format(label)
     with open(filename, "w") as f:
         json.dump(runs, f)
     if verbose:
@@ -307,13 +320,16 @@ def generate_ruletree_data(
 def _generate_one_tree_worker(args):
     """Multiprocessing worker: generate all runs for one tree.
 
-    Returns the label so the caller can report progress. The output is
-    written directly to disk by the worker (one JSON file per tree),
-    avoiding any large IPC payloads.
+    Returns (label, skipped) so the caller can track progress.
+    skipped=True means the output file already existed and nothing was
+    regenerated. The output is written directly to disk by the worker
+    (one JSON file per tree), avoiding any large IPC payloads.
     """
     (label, tree, kwargs) = args
+    filename = Path(kwargs["output_dir"]) / "ruletree_{:04d}.json".format(label)
+    skipped = kwargs.get("skip_existing", True) and filename.exists()
     generate_ruletree_data(tree, label, verbose=False, **kwargs)
-    return label
+    return label, skipped
 
 
 def generate_all_ruletrees(
@@ -325,6 +341,7 @@ def generate_all_ruletrees(
     snapshot_ticks=None,
     output_dir="GENERATED_DATA/rule_trees",
     n_workers=1,
+    skip_existing=True,
 ):
     """Generate simulation data for every tree in the library.
 
@@ -335,9 +352,12 @@ def generate_all_ruletrees(
                   the full set of runs for one tree and writes its own
                   ruletree_NNNN.json file. Output is bit-identical to the
                   serial path because each run uses a deterministic seed.
+    skip_existing: if True (default), trees whose ruletree_NNNN.json
+                  already exists in output_dir are skipped. Makes the
+                  function safe to re-run after a partial failure.
     """
-    print("Generating rule-tree data for {} trees ({} workers)...".format(
-        len(tree_library), n_workers))
+    print("Generating rule-tree data for {} trees ({} workers, skip_existing={})...".format(
+        len(tree_library), n_workers, skip_existing))
 
     common_kwargs = dict(
         grid_size=grid_size,
@@ -346,6 +366,7 @@ def generate_all_ruletrees(
         max_steps=max_steps,
         snapshot_ticks=snapshot_ticks,
         output_dir=output_dir,
+        skip_existing=skip_existing,
     )
 
     if n_workers <= 1:
@@ -359,12 +380,18 @@ def generate_all_ruletrees(
         # so workers pick up new trees as they finish (better load balance
         # since trees vary in equilibrium time).
         completed = 0
+        skipped = 0
+        generated = 0
         with Pool(n_workers) as pool:
-            for done_label in pool.imap_unordered(
+            for label, was_skipped in pool.imap_unordered(
                 _generate_one_tree_worker, args_iter, chunksize=1
             ):
                 completed += 1
+                if was_skipped:
+                    skipped += 1
+                else:
+                    generated += 1
                 if completed % 10 == 0 or completed == len(tree_library):
-                    print("  generated {}/{} trees".format(
-                        completed, len(tree_library)))
+                    print("  progress {}/{} ({} generated, {} skipped)".format(
+                        completed, len(tree_library), generated, skipped))
     print("Done.")

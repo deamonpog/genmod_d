@@ -3,7 +3,7 @@
 #BSUB -q standard
 #BSUB -n 16
 #BSUB -R "span[hosts=1]"
-#BSUB -W 04:00
+#BSUB -W 12:00
 #BSUB -o results/logs/genmod-sim.%J.%I.out
 #BSUB -e results/logs/genmod-sim.%J.%I.err
 
@@ -13,6 +13,15 @@
 # loads the previously-built tree library and simulates the slice
 # library[task_id*total/30 : (task_id+1)*total/30]. The slicing math
 # guarantees every label is covered exactly once.
+#
+# Wall-clock budget: 12 hours per task. The first run of this array at
+# -W 04:00 had 13/30 tasks killed by TERM_RUNLIMIT exactly at 4 hours,
+# suggesting the hardest slices genuinely take a bit more than 4h on 16
+# cores. 12h is a generous ceiling.
+#
+# Resumability: generate_all_ruletrees now skips trees whose
+# ruletree_NNNN.json already exists. If a task is re-run (e.g. after
+# TERM_RUNLIMIT), it will pick up only the trees it did not finish.
 #
 # %J in the output filename is the parent job ID, %I is the array task
 # index. LSB_JOBINDEX (1-based) holds the current task index inside
