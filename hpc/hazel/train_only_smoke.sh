@@ -2,7 +2,7 @@
 #SBATCH --job-name=genmod-train-smoke
 #SBATCH --partition=gpu_partners
 #SBATCH --qos=short_gpu
-#SBATCH --gres=gpu:a30:1
+#SBATCH --gres=gpu:a10:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -21,9 +21,12 @@
 # physical L40 in the `gpu` partition -- so smoke jobs there queue on
 # QOSGrpGRES or wait for the single L40. Instead we use the partner
 # short-GPU pool: `--partition=gpu_partners --qos=short_gpu` (open to
-# all users for jobs under 2h). short_gpu has no group cap on a30, and
-# gpu_partners has more idle GPUs, so smoke jobs start quickly. The
-# 2h short_gpu limit is fine for a <30 min smoke run.
+# all users for jobs under 2h). We request an A10 (24 GB, ample for the
+# tiny model): the two dedicated A10 nodes (gpu09, gpu12) are usually
+# idle, short_gpu has no group cap on a10, and the A30s are frequently
+# saturated. If A10s are busy, override on the CLI, e.g.
+# `sbatch --gres=gpu:a30:1 hpc/hazel/train_only_smoke.sh`. The 2h
+# short_gpu limit is fine for a <30 min smoke run.
 #
 # The full/production runs (train_only.sh, train_only_rowcol.sh) stay
 # on `--partition=gpu --qos=gpu --gres=gpu:l40:1` because they exceed
