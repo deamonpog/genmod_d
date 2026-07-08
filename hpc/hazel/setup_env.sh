@@ -1,5 +1,5 @@
 #!/bin/bash
-# One-time conda env setup on Hazel HPC.
+# One-time conda env setup on Hazel HPC (Slurm).
 #
 # Run interactively from a Hazel login node:
 #
@@ -18,7 +18,7 @@
 #   4. Runs a lightweight import-level verification to catch obvious
 #      packaging breakage before you submit any real job. GPU-level
 #      verification requires a compute node; see hpc/hazel/verify_env.sh
-#      for that (submit via bsub).
+#      for that (run inside an salloc GPU session).
 #
 # Hardcoded for the cads project group. Edit GROUP below if you belong
 # to a different group.
@@ -165,7 +165,9 @@ echo "  source ~/.bashrc"
 echo "  module load conda"
 echo "  conda activate $ENV_DIR"
 echo
-echo "For a full health check on a GPU node:"
-echo "  bsub -Is -q short_gpu -gpu \"num=1\" -n 2 -R \"span[hosts=1]\" \\"
-echo "       -W 00:10 bash hpc/hazel/verify_env.sh"
+echo "For a full health check on a GPU node (Slurm):"
+echo "  salloc --partition=gpu --qos=gpu --gres=gpu:l40:1 -n 1 \\"
+echo "         --cpus-per-task=2 --mem=8G --time=00:15:00"
+echo "  # then, inside the allocation:"
+echo "  bash hpc/hazel/verify_env.sh"
 echo "========================================================"

@@ -1,16 +1,19 @@
 #!/bin/bash
-# Hazel HPC env health check.
+# Hazel HPC env health check (Slurm).
 #
 # Can be run two ways:
 #
-# 1. Interactive on a GPU node (recommended, tests CUDA too):
+# 1. Interactive on a GPU node (recommended, tests CUDA too). Grab an
+#    allocation, then run this script inside it:
 #
-#      bsub -Is -q short_gpu -gpu "num=1" -n 2 -R "span[hosts=1]" \
-#           -W 00:10 bash hpc/hazel/verify_env.sh
+#      salloc --partition=gpu --qos=gpu --gres=gpu:l40:1 -n 1 \
+#             --cpus-per-task=2 --mem=8G --time=00:15:00
+#      # inside the allocation:
+#      bash hpc/hazel/verify_env.sh
 #
-# 2. Directly as a bash script (without bsub) on whatever node you are
-#    on. CUDA checks will return False on login nodes, which is expected
-#    and NOT a failure -- login nodes have no GPU.
+# 2. Directly as a bash script (without an allocation) on whatever node
+#    you are on. CUDA checks will return False on login nodes, which is
+#    expected and NOT a failure -- login nodes have no GPU.
 #
 # This script does NOT use `set -e`. The conda activation chain emits
 # non-zero internal substeps that would kill it.
@@ -138,12 +141,4 @@ print("ALL CHECKS PASSED")
 PY
 
 rc=$?
-echo
-echo "========================================================"
-if [ $rc -eq 0 ]; then
-    echo "Verification OK"
-else
-    echo "Verification FAILED (exit $rc)"
-fi
-echo "========================================================"
 exit $rc

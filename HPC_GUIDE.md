@@ -9,10 +9,10 @@ The codebase ships with two sets of HPC scripts in separate folders:
 | Cluster | Scheduler | Script directory | Status |
 |---|---|---|---|
 | **Pasteur** (single 384-core fat node, 8x H200) | Slurm (`sbatch`) | `hpc/pasteur/` | Default; use when Pasteur is online |
-| **NCSU Hazel** (multi-node, ~14000 cores, mixed GPUs) | LSF (`bsub`) | `hpc/hazel/` | Backup during Pasteur maintenance |
+| **NCSU Hazel** (multi-node, ~14000 cores, mixed GPUs) | Slurm (`sbatch`) | `hpc/hazel/` | Backup during Pasteur maintenance |
 
 If Pasteur is up, use the Slurm scripts (Step 1 onward below). If Pasteur
-is in maintenance, jump to **"Running on NCSU Hazel HPC (LSF)"** at the
+is in maintenance, jump to **"Running on NCSU Hazel HPC (Slurm)"** at the
 bottom of this file.
 
 ## Configs (shared between both clusters)
@@ -193,22 +193,23 @@ conda activate /data/apps/casl/arachchige/genmod-env
 
 ---
 
-## Running on NCSU Hazel HPC (LSF)
+## Running on NCSU Hazel HPC (Slurm)
 
-Use this section when Pasteur is in maintenance. Hazel runs IBM Spectrum
-LSF (the cluster is in transition to Slurm but LSF still owns the bulk of
-the resources). Submission, monitoring, and array syntax are all
-LSF-specific (`bsub`, `bjobs`, `-J "name[1-N]%K"`, `-w "done(JID)"`).
+Use this section when Pasteur is in maintenance. As of 2026 Hazel has
+migrated from LSF to **Slurm**. Submission, monitoring, and array syntax
+are all Slurm-native (`sbatch`, `squeue`, `--array=1-N%K`,
+`--dependency=afterok:JID`). See the NCSU quick start at
+https://hpc.ncsu.edu/QuickStart/SlurmTest.php.
 
 The Hazel pipeline is split into three stages so the GPU does not sit
 idle during pure-Python data generation:
 
 1. **build library** -- one CPU job (16 cores, ~15-30 min)
-2. **simulate trees** -- LSF job array of 30 tasks (16 cores each, max 8
-   concurrent, ~3-4 hours)
-3. **train classifier** -- one GPU job on an L40S (~3-5 hours)
+2. **simulate trees** -- Slurm job array of 30 tasks (16 cores each, max
+   8 concurrent, ~3-4 hours)
+3. **train classifier** -- one GPU job on an L40 (~3-5 hours)
 
-The three stages are chained with `bsub -w "done(JID)"` so you can
+The three stages are chained with `--dependency=afterok:JID` so you can
 submit them all at once and walk away.
 
 ### Hazel: Step 1 - First-time setup (login node)
@@ -233,13 +234,13 @@ cd /share/cads/$USER/genmod_d
 bash hpc/hazel/setup_env.sh
 ```
 
-The env lives at `/usr/local/usrapps/cads/cdondim/genmod-env`. To verify
-it can see a GPU, request an interactive GPU node:
+The env lives at `/usr/local/usrapps/cads/$USER/genmod-env`. To verify
+it can see a GPU, grab an interactive GPU allocation:
 
 ```bash
-bsub -Is -q gpu -m "gpu_l40s gpu_a30 gpu_a10" -gpu "num=1" -n 2 \
-    -R "rusage[mem=8000]" -W 00:15 bash
-# Inside the interactive session:
+salloc --partition=gpu --qos=gpu --gres=gpu:l40:1 -n 1 \
+       --cpus-per-task=2 --mem=8G --time=00:15:00
+# Inside the allocation:
 source ~/.bashrc
 module load conda
 conda activate /usr/local/usrapps/cads/$USER/genmod-env
@@ -247,6 +248,9 @@ nvidia-smi
 python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 exit
 ```
+
+Or just run the bundled health check inside the allocation:
+`bash hpc/hazel/verify_env.sh`.
 
 ### Hazel: Step 2 - Smoke test (3-stage chain, ~15 minutes)
 
@@ -258,10 +262,15 @@ stages with chained dependencies:
 cd /share/cads/$USER/genmod_d
 mkdir -p results/logs
 
-LIB=$(bsub < hpc/hazel/build_library_smoke.sh    | awk '{print $2}' | tr -d '<>')
-SIM=$(bsub -w "done($LIB)" < hpc/hazel/simulate_array_smoke.sh | awk '{print $2}' | tr -d '<>')
-TR=$(bsub  -w "done($SIM)" < hpc/hazel/train_only_smoke.sh    | awk '{print $2}' | tr -d '<>')
+LIB=$(sbatch --parsable hpc/hazel/build_library_smoke.sh)
+SIM=$(sbatch --parsable --dependency=afterok:$LIB hpc/hazel/simulate_array_smoke.sh)
+TR=$(sbatch  --parsable --dependency=afterok:$SIM hpc/hazel/train_only_smoke.sh)
 echo "smoke: lib=$LIB sim=$SIM train=$TR"
+
+# Optional: also smoke-test the decomposed row/col embedding variant.
+# It reuses the same GENERATED_DATA_smoke, so depend on the same array:
+TRR=$(sbatch --parsable --dependency=afterok:$SIM hpc/hazel/train_only_rowcol_smoke.sh)
+echo "smoke rowcol: train=$TRR"
 ```
 
 When everything finishes, inspect:
@@ -280,36 +289,53 @@ scripts:
 cd /share/cads/$USER/genmod_d
 mkdir -p results/logs
 
-LIB=$(bsub < hpc/hazel/build_library.sh    | awk '{print $2}' | tr -d '<>')
-SIM=$(bsub -w "done($LIB)" < hpc/hazel/simulate_array.sh | awk '{print $2}' | tr -d '<>')
-TR=$(bsub  -w "done($SIM)" < hpc/hazel/train_only.sh    | awk '{print $2}' | tr -d '<>')
+LIB=$(sbatch --parsable hpc/hazel/build_library.sh)
+SIM=$(sbatch --parsable --dependency=afterok:$LIB hpc/hazel/simulate_array.sh)
+TR=$(sbatch  --parsable --dependency=afterok:$SIM hpc/hazel/train_only.sh)
 echo "full: lib=$LIB sim=$SIM train=$TR"
 ```
+
+To train the **decomposed row/col embedding** variant, run its train
+stage against the same data (no rebuild or re-simulation needed):
+
+```bash
+# After GENERATED_DATA exists (or chain on the same $SIM):
+sbatch hpc/hazel/train_only_rowcol.sh
+# or: sbatch --dependency=afterok:$SIM hpc/hazel/train_only_rowcol.sh
+```
+
+The base run writes to `results/logs/ruletree_base/` and the rowcol run
+to `results/logs/ruletree_rowcol/`, so they never collide.
 
 ### Hazel: Step 4 - Monitor
 
 ```bash
-bjobs                           # all your jobs
-bjobs -l <jobid>                # detailed status of one job
-bjobs -A <jobid>                # array task summary
+squeue -u $USER                 # all your jobs (PD=pending, R=running)
+squeue -j <jobid>               # status of one job
+squeue -j <arrayjobid> -r       # expand array tasks
+sacct -j <jobid>                # completed job accounting
+seff <jobid>                    # efficiency summary after completion
 tail -f results/logs/genmod-build.<JID>.out
-tail -f results/logs/genmod-sim.<JID>.<TASKID>.out
+tail -f results/logs/genmod-sim.<ARRAYJID>_<TASKID>.out
 tail -f results/logs/genmod-train.<JID>.out
-bkill <jobid>                   # cancel a job (or array)
-bqueues -u $USER                # which queues you have access to
+scancel <jobid>                 # cancel a job (or whole array)
+sqos                            # which QOS / partitions you can use
 ```
 
-### Hazel: LSF scripts
+### Hazel: Slurm scripts
 
-| Script | Queue | Resources | Purpose |
-|--------|-------|-----------|---------|
+| Script | Partition / QOS | Resources | Purpose |
+|--------|-----------------|-----------|---------|
 | `hpc/hazel/setup_env.sh` | login | interactive | One-time conda env setup |
-| `hpc/hazel/build_library.sh` | standard | 16 CPUs, 4h | Stage 1: build tree library |
-| `hpc/hazel/simulate_array.sh` | standard | array 1-30 %8, 16 CPUs each | Stage 2: simulate trees |
-| `hpc/hazel/train_only.sh` | gpu | 1x L40S, 8 CPUs, 12h | Stage 3: train classifier |
-| `hpc/hazel/build_library_smoke.sh` | standard | 4 CPUs, 30m | Smoke stage 1 |
-| `hpc/hazel/simulate_array_smoke.sh` | standard | array 1-3 %2, 4 CPUs each | Smoke stage 2 |
-| `hpc/hazel/train_only_smoke.sh` | gpu | 1x small GPU, 4 CPUs, 30m | Smoke stage 3 |
+| `hpc/hazel/verify_env.sh` | any (GPU node ideal) | interactive | Env + CUDA health check |
+| `hpc/hazel/build_library.sh` | compute / normal | 16 CPUs, 4h | Stage 1: build tree library |
+| `hpc/hazel/simulate_array.sh` | compute / normal | array 1-30 %8, 16 CPUs each | Stage 2: simulate trees |
+| `hpc/hazel/train_only.sh` | gpu / gpu | 1x L40, 8 CPUs, 12h | Stage 3: train base (time_space) |
+| `hpc/hazel/train_only_rowcol.sh` | gpu / gpu | 1x L40, 8 CPUs, 12h | Stage 3 variant: train rowcol (time_row_col) |
+| `hpc/hazel/build_library_smoke.sh` | compute / normal | 16 CPUs, 30m | Smoke stage 1 |
+| `hpc/hazel/simulate_array_smoke.sh` | compute / normal | array 1-3 %2, 16 CPUs each | Smoke stage 2 |
+| `hpc/hazel/train_only_smoke.sh` | gpu / gpu | 1x L40, 4 CPUs, 30m | Smoke stage 3 (base) |
+| `hpc/hazel/train_only_rowcol_smoke.sh` | gpu / gpu | 1x L40, 4 CPUs, 30m | Smoke stage 3 (rowcol) |
 
 ### Hazel: Expected runtimes
 
@@ -317,33 +343,37 @@ bqueues -u $USER                # which queues you have access to
 |-------|----------|------------|
 | Stage 1: build library | 16 CPUs | 15-30 min |
 | Stage 2: simulate array (30 tasks, 8 concurrent) | up to 128 cores peak | 3-4 hours |
-| Stage 3: train | 1 L40S + 8 CPUs | 3-5 hours (slower at batch=16) |
+| Stage 3: train | 1 L40 + 8 CPUs | 3-5 hours (slower at batch=16) |
 | **End to end (with queue waits)** | | **7-12 hours** |
 
 ### Hazel: Troubleshooting
 
-**"User not authorized to use queue"**: try a different queue. The
-production scripts default to `-q standard`. If you have access to a
-private group queue, edit the `#BSUB -q` line in
-`hpc/hazel/build_library.sh` and `hpc/hazel/simulate_array.sh`. To
-see your queue access from the login node:
-```bash
-bqueues -u $USER
-```
+**"Invalid qos specification" / "Invalid partition"**: the GPU jobs use
+`--partition=gpu --qos=gpu` and the CPU jobs `--partition=compute
+--qos=normal`. Check what you are allowed to use with `sqos` (or `sa`).
+Partner-project members can switch the GPU scripts to
+`--partition=gpu_partners --qos=p_cads_gpu` for higher priority on
+partner-contributed hardware.
+
+**"Requested node configuration is not available" on a GPU job**: the
+new Slurm system REQUIRES a GPU type in `--gres` (e.g.
+`--gres=gpu:l40:1`). If L40 nodes are busy, edit the `--gres` line to
+another type (`l40s`, `a100`, `h100`, `h200`). List free GPUs with
+`si -p gpu` or `si --nodes --gpus`.
 
 **"Cannot find tree_library.json" in stage 2**: stage 1 must complete
-successfully before stage 2 runs. This should be enforced by the
-`-w "done(JID)"` dependency, but if you submitted stages out of order
+successfully before stage 2 runs. This is enforced by
+`--dependency=afterok:JID`, but if you submitted stages out of order
 just resubmit stage 2 after stage 1 finishes.
 
-**"CUDA out of memory" on L40S**: the production config uses
+**"CUDA out of memory" on L40**: the production config uses
 `batch_size=16` which fits comfortably in 48 GB at fp32. If you somehow
 still OOM, drop to `--batch_size 8` on the CLI or in the YAML.
 
 **Conda activation fails in batch jobs**: Hazel requires
 `source ~/.bashrc` BEFORE `conda activate` in batch scripts. All our
-`*_hazel.sh` scripts already do this. If you write a custom script,
-do not forget it.
+Hazel scripts already do this. If you write a custom script, do not
+forget it.
 
 **Pasteur is back online**: switch back to the Pasteur slurm scripts at
 the top of this file. The `hpc/hazel/` scripts stay in place for the

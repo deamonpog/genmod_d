@@ -1,41 +1,40 @@
 #!/bin/bash
-#BSUB -J genmod-train
-#BSUB -q gpu
-#BSUB -R "select[h100||l40] span[hosts=1]"
-#BSUB -gpu "num=1"
-#BSUB -n 8
-#BSUB -W 12:00
-#BSUB -o results/logs/genmod-train.%J.out
-#BSUB -e results/logs/genmod-train.%J.err
+#SBATCH --job-name=genmod-train
+#SBATCH --partition=gpu
+#SBATCH --qos=gpu
+#SBATCH --gres=gpu:l40:1
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --time=12:00:00
+#SBATCH --output=results/logs/genmod-train.%j.out
+#SBATCH --error=results/logs/genmod-train.%j.err
 
 # Hazel HPC stage 3 of 3: train the rule-tree classifier on a GPU.
 #
-# GPU selection: H100 (80 GB) OR L40 (48 GB).
+# GPU: 1x NVIDIA L40 (48 GB). The base model at batch_size=16 fits
+# comfortably in 48 GB at fp32. On the new Slurm system the GPU type is
+# REQUIRED in --gres (there is no untyped "any GPU" request).
 #
-# Why both?  The Hazel `gpu` queue routes to:
-#   gpu_xtx, gpu_p100, gpu_a10, gpu_a30, gpu_a100, gpu_l40, gpu_h100
-# (confirmed via `bqueues -r | grep gpu`). It does NOT route to
-# gpu_l40s or gpu_h200 -- those live in group-private queues or in
-# short_gpu/multi_gpu.
+# To request a different GPU type, edit the --gres line above. Valid
+# types (see https://hpc.ncsu.edu/RunningJobs/Resources.php):
+#   --gres=gpu:h200:1    141 GB
+#   --gres=gpu:h100:1     80 GB
+#   --gres=gpu:l40s:1     48 GB
+#   --gres=gpu:l40:1      48 GB   (default here)
+#   --gres=gpu:a100:1     40 GB
 #
-# H100 and L40 are the two models in the `gpu` queue with >= 48 GB
-# VRAM, which is what our base model at batch_size=16 comfortably
-# needs. OR-ing them (`select[h100||l40]`) gives 6 candidate hosts
-# (gpu14, gpu15, gpu16, gpu17, gpu32, gpu33) instead of 4, shortening
-# queue wait on average.
-#
-# If you want to force a specific model:
-#   #BSUB -R "select[h100] span[hosts=1]"    H100 only (4 cards, 80 GB)
-#   #BSUB -R "select[l40] span[hosts=1]"     L40 only  (2 cards, 48 GB)
-#   #BSUB -R "select[a100] span[hosts=1]"    A100 only (2 cards, 40 or 80 GB)
-#
-# GPU models NOT reachable via the `gpu` queue (as of our check):
-# l40s, h200. If you want those, submit via `-q short_gpu` (2 h time
-# limit) or one of the group-private queues (e.g. pfaendtner_gpu has
-# l40s+h100+h200, if you have access).
+# Partner projects with contributed GPUs can trade the two lines
+#   #SBATCH --partition=gpu
+#   #SBATCH --qos=gpu
+# for
+#   #SBATCH --partition=gpu_partners
+#   #SBATCH --qos=p_cads_gpu
+# to land on the partner allocation with higher priority.
 #
 # Submission with a dependency on stage 2:
-#   bsub -w "done($SIM_JID)" < hpc/hazel/train_only.sh
+#   sbatch --dependency=afterok:$SIM_JID hpc/hazel/train_only.sh
 
 # Activate conda BEFORE `set -e`; the activation chain emits internal
 # non-zero exits that `set -e` would catch and abort on, even though
@@ -47,14 +46,14 @@ conda activate /usr/local/usrapps/cads/$USER/genmod-env
 set -e
 
 # Reasonable thread counts for the dataloader.
-export OMP_NUM_THREADS=8
-export MKL_NUM_THREADS=8
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-8}
+export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK:-8}
 
 mkdir -p results/logs results/checkpoints results/figures
 
-echo "=== Train rule-tree classifier ==="
+echo "=== Train rule-tree classifier (base: time_space) ==="
 echo "Host:    $(hostname)"
-echo "JobID:   $LSB_JOBID"
+echo "JobID:   $SLURM_JOB_ID"
 echo "Started: $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 echo

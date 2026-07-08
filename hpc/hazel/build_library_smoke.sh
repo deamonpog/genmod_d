@@ -1,10 +1,14 @@
 #!/bin/bash
-#BSUB -J genmod-build-smoke
-#BSUB -n 16
-#BSUB -R "span[hosts=1]"
-#BSUB -W 00:30
-#BSUB -o results/logs/genmod-build-smoke.%J.out
-#BSUB -e results/logs/genmod-build-smoke.%J.err
+#SBATCH --job-name=genmod-build-smoke
+#SBATCH --partition=compute
+#SBATCH --qos=normal
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=16G
+#SBATCH --time=00:30:00
+#SBATCH --output=results/logs/genmod-build-smoke.%j.out
+#SBATCH --error=results/logs/genmod-build-smoke.%j.err
 
 # Hazel HPC smoke stage 1 of 3: build a tiny rule-tree library.
 #
@@ -32,7 +36,7 @@ mkdir -p results/logs results/checkpoints results/figures
 
 echo "=== Smoke build tree library ==="
 echo "Host:    $(hostname)"
-echo "JobID:   $LSB_JOBID"
+echo "JobID:   $SLURM_JOB_ID"
 echo "Python:  $(which python)"
 echo "Started: $(date)"
 echo
@@ -46,7 +50,7 @@ python scripts/generate_ruletrees.py \
     --max_steps 200 \
     --output_dir GENERATED_DATA_smoke \
     --seed 42 \
-    --workers 16
+    --workers ${SLURM_CPUS_PER_TASK:-16}
 
 echo
 echo "Finished: $(date)"
