@@ -125,7 +125,9 @@ def get_schelling_tokenization_params(
 
     Defaults give: 625 patches/snapshot, vocab 82, seq_len 3126.
     """
-    patches_per_snapshot = (grid_size // patch_size) ** 2
+    grid_cols = grid_size // patch_size
+    grid_rows = grid_size // patch_size
+    patches_per_snapshot = grid_rows * grid_cols
     vocab_no_cls = 3 ** (patch_size * patch_size)
     cls_token_id = vocab_no_cls
     vocab_size = vocab_no_cls + 1
@@ -138,4 +140,6 @@ def get_schelling_tokenization_params(
         "seq_len": seq_len,
         "time_size": time_size,
         "space_size": space_size,
+        "grid_rows": grid_rows,
+        "grid_cols": grid_cols,
     }

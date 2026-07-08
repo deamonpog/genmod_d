@@ -129,6 +129,8 @@ def train(cfg: ExperimentConfig):
         model_size=cfg.model.model_size,
         dropout=cfg.model.dropout,
         positional_encoding=cfg.model.positional_encoding,
+        grid_rows=tok_params.get("grid_rows"),
+        grid_cols=tok_params.get("grid_cols"),
     ).to(device)
 
     n_params = model.count_parameters()
