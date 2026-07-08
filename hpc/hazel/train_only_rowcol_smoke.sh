@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=genmod-train-rowcol-smoke
-#SBATCH --partition=gpu
-#SBATCH --qos=gpu
-#SBATCH --gres=gpu:l40:1
+#SBATCH --partition=gpu_partners
+#SBATCH --qos=short_gpu
+#SBATCH --gres=gpu:a30:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -17,6 +17,13 @@
 # Exercises the time_row_col code path end-to-end (build -> factory ->
 # train -> conformal) on a tiny model before committing to the full
 # rowcol run. Reuses the smoke data in GENERATED_DATA_smoke.
+#
+# GPU routing: uses the partner short-GPU pool
+# (`--partition=gpu_partners --qos=short_gpu --gres=gpu:a30:1`) for the
+# same reasons as train_only_smoke.sh -- the standard `gpu` QOS caps
+# a30 group-wide and there is only 1 physical L40, so smoke jobs there
+# stall on QOSGrpGRES. short_gpu (open to all users, 2h max) has idle
+# GPUs and no a30 group cap, so smoke jobs start quickly.
 #
 # The config sets name=ruletree_rowcol_smoke so it does not overwrite
 # the base smoke results.

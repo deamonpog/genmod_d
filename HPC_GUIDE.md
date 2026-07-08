@@ -334,8 +334,8 @@ sqos                            # which QOS / partitions you can use
 | `hpc/hazel/train_only_rowcol.sh` | gpu / gpu | 1x L40, 8 CPUs, 12h | Stage 3 variant: train rowcol (time_row_col) |
 | `hpc/hazel/build_library_smoke.sh` | compute / normal | 16 CPUs, 30m | Smoke stage 1 |
 | `hpc/hazel/simulate_array_smoke.sh` | compute / normal | array 1-3 %2, 16 CPUs each | Smoke stage 2 |
-| `hpc/hazel/train_only_smoke.sh` | gpu / gpu | 1x L40, 4 CPUs, 30m | Smoke stage 3 (base) |
-| `hpc/hazel/train_only_rowcol_smoke.sh` | gpu / gpu | 1x L40, 4 CPUs, 30m | Smoke stage 3 (rowcol) |
+| `hpc/hazel/train_only_smoke.sh` | gpu_partners / short_gpu | 1x A30, 4 CPUs, 30m | Smoke stage 3 (base) |
+| `hpc/hazel/train_only_rowcol_smoke.sh` | gpu_partners / short_gpu | 1x A30, 4 CPUs, 30m | Smoke stage 3 (rowcol) |
 
 ### Hazel: Expected runtimes
 
