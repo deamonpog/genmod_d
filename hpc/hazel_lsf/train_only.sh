@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -J genmod-train
 #BSUB -q gpu
-#BSUB -R "select[h100||h200||l40] rusage[mem=32] span[hosts=1]"
+#BSUB -R "select[h100||h200] rusage[mem=32] span[hosts=1]"
 #BSUB -gpu "num=1"
 #BSUB -n 8
 #BSUB -W 48:00
@@ -20,13 +20,13 @@
 # the Slurm data-gen stages (hpc/hazel/build_library.sh +
 # simulate_array.sh). Run those first (on Slurm), then submit this.
 #
-# GPU selection: accept H100 (80 GB), H200 (141 GB), or L40 (48 GB) --
-# whichever the LSF gpu queue can place first. Per bhosts, gpu_h100
-# (~109 free) and gpu_h200 have far more free capacity than gpu_l40
-# (closed/full), so this starts much faster than L40-only. Note: the
-# LSF `gpu` queue historically routes to h100/l40 but NOT h200 (h200
-# lives in other queues), so in practice this lands on H100 or L40.
-# All three are >= 48 GB, so the config default batch_size 16 fits.
+# GPU selection: H100 (80 GB) or H200 (141 GB) -- i.e. any GPU with
+# >= 80 GB VRAM. The gpu queue routes to a100/l40/h100 (per
+# `bqueues -l gpu`); h200 is included in case it becomes reachable,
+# though in practice this lands on H100. We require >= 80 GB because it
+# comfortably fits batch_size 16 at this long sequence length (L40's
+# 48 GB is tight, A100's 40 GB too small), and keeping both base and
+# rowcol on the same >=80GB class makes the comparison apples-to-apples.
 #
 # Host memory: on Hazel LSF, rusage[mem] is per-host GB (mem=4 reserved
 # only 4 GB and the job ran at ~625% MEM efficiency). rusage[mem=32]
