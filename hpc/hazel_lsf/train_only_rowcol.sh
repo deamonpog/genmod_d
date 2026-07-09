@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -J genmod-train-rowcol
 #BSUB -q gpu
-#BSUB -R "select[l40] rusage[mem=4096] span[hosts=1]"
+#BSUB -R "select[l40] rusage[mem=4] span[hosts=1]"
 #BSUB -gpu "num=1"
 #BSUB -n 8
 #BSUB -W 12:00
@@ -20,11 +20,12 @@
 # / checkpoints / figures land in their own subdirectories.
 #
 # GPU selection: L40 (48 GB). To also accept H100, change the select
-# line to:  #BSUB -R "select[h100||l40] rusage[mem=4096] span[hosts=1]"
+# line to:  #BSUB -R "select[h100||l40] rusage[mem=4] span[hosts=1]"
 #
-# Host memory: rusage[mem=4096] requests 4 GB/task x 8 tasks = 32 GB,
-# matching the Slurm train_only_rowcol.sh --mem=32G (the LSF default of
-# 2 GB/task = 16 GB is too low for the full tokenized dataset).
+# Host memory: on Hazel LSF, rusage[mem] is in GB (the default was
+# mem=2.00/task). rusage[mem=4] requests 4 GB/task x 8 tasks = 32 GB,
+# matching the Slurm train_only_rowcol.sh --mem=32G (the 16 GB default
+# is too low for the full tokenized dataset).
 #
 # IMPORTANT: this writes results to results/logs/ruletree_rowcol/, the
 # same place as the Slurm train_only_rowcol.sh. Do NOT let both the
