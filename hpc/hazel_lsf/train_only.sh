@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -J genmod-train
 #BSUB -q gpu
-#BSUB -R "select[l40] span[hosts=1]"
+#BSUB -R "select[l40] rusage[mem=4096] span[hosts=1]"
 #BSUB -gpu "num=1"
 #BSUB -n 8
 #BSUB -W 12:00
@@ -21,7 +21,11 @@
 # simulate_array.sh). Run those first (on Slurm), then submit this.
 #
 # GPU selection: L40 (48 GB). To also accept H100 (80 GB) for a faster
-# start, change the select line to:  #BSUB -R "select[h100||l40] span[hosts=1]"
+# start, change the select line to:  #BSUB -R "select[h100||l40] rusage[mem=4096] span[hosts=1]"
+#
+# Host memory: rusage[mem=4096] requests 4 GB/task x 8 tasks = 32 GB,
+# matching the Slurm train_only.sh --mem=32G (the LSF default of 2 GB/
+# task = 16 GB is too low for the full tokenized dataset).
 #
 # IMPORTANT: this writes results to results/logs/ruletree_base/, the
 # same place as the Slurm train_only.sh. Do NOT let both the Slurm and
