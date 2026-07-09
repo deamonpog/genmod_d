@@ -1,10 +1,10 @@
 #!/bin/bash
 #BSUB -J genmod-train-rowcol
 #BSUB -q gpu
-#BSUB -R "select[h100||h200||l40] rusage[mem=4] span[hosts=1]"
+#BSUB -R "select[h100||h200||l40] rusage[mem=32] span[hosts=1]"
 #BSUB -gpu "num=1"
 #BSUB -n 8
-#BSUB -W 12:00
+#BSUB -W 48:00
 #BSUB -o results/logs/genmod-train-rowcol-lsf.%J.out
 #BSUB -e results/logs/genmod-train-rowcol-lsf.%J.err
 
@@ -26,10 +26,13 @@
 # in practice this lands on H100 or L40. All are >= 48 GB, so the
 # config default batch_size 16 fits.
 #
-# Host memory: on Hazel LSF, rusage[mem] is in GB (the default was
-# mem=2.00/task). rusage[mem=4] requests 4 GB/task x 8 tasks = 32 GB,
-# matching the Slurm train_only_rowcol.sh --mem=32G (the 16 GB default
-# is too low for the full tokenized dataset).
+# Host memory: on Hazel LSF, rusage[mem] is per-host GB (mem=4 reserved
+# only 4 GB). rusage[mem=32] reserves 32 GB, matching the Slurm
+# train_only_rowcol.sh --mem=32G.
+#
+# Wall time: full training is ~45 min/epoch x 30 epochs + eval ~= 24 h,
+# so -W 12:00 is too short. The gpu queue allows up to 4320 min (72 h);
+# we request 48 h for margin.
 #
 # IMPORTANT: this writes results to results/logs/ruletree_rowcol/, the
 # same place as the Slurm train_only_rowcol.sh. Do NOT let both the

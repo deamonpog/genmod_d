@@ -1,10 +1,10 @@
 #!/bin/bash
 #BSUB -J genmod-train
 #BSUB -q gpu
-#BSUB -R "select[h100||h200||l40] rusage[mem=4] span[hosts=1]"
+#BSUB -R "select[h100||h200||l40] rusage[mem=32] span[hosts=1]"
 #BSUB -gpu "num=1"
 #BSUB -n 8
-#BSUB -W 12:00
+#BSUB -W 48:00
 #BSUB -o results/logs/genmod-train-lsf.%J.out
 #BSUB -e results/logs/genmod-train-lsf.%J.err
 
@@ -28,10 +28,14 @@
 # lives in other queues), so in practice this lands on H100 or L40.
 # All three are >= 48 GB, so the config default batch_size 16 fits.
 #
-# Host memory: on Hazel LSF, rusage[mem] is in GB (the default was
-# mem=2.00/task). rusage[mem=4] requests 4 GB/task x 8 tasks = 32 GB,
-# matching the Slurm train_only.sh --mem=32G (the 16 GB default is too
-# low for the full tokenized dataset).
+# Host memory: on Hazel LSF, rusage[mem] is per-host GB (mem=4 reserved
+# only 4 GB and the job ran at ~625% MEM efficiency). rusage[mem=32]
+# reserves 32 GB, matching the Slurm train_only.sh --mem=32G.
+#
+# Wall time: full training is ~45 min/epoch x 30 epochs + eval ~= 24 h,
+# so -W 12:00 is far too short (the job would be killed ~epoch 15,
+# before the conformal step, leaving no results.json). The gpu queue
+# allows up to 4320 min (72 h); we request 48 h for margin.
 #
 # IMPORTANT: this writes results to results/logs/ruletree_base/, the
 # same place as the Slurm train_only.sh. Do NOT let both the Slurm and
