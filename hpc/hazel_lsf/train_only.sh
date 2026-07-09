@@ -1,7 +1,7 @@
 #!/bin/bash
 #BSUB -J genmod-train
 #BSUB -q gpu
-#BSUB -R "select[l40] rusage[mem=4] span[hosts=1]"
+#BSUB -R "select[h100||h200||l40] rusage[mem=4] span[hosts=1]"
 #BSUB -gpu "num=1"
 #BSUB -n 8
 #BSUB -W 12:00
@@ -20,8 +20,13 @@
 # the Slurm data-gen stages (hpc/hazel/build_library.sh +
 # simulate_array.sh). Run those first (on Slurm), then submit this.
 #
-# GPU selection: L40 (48 GB). To also accept H100 (80 GB) for a faster
-# start, change the select line to:  #BSUB -R "select[h100||l40] rusage[mem=4] span[hosts=1]"
+# GPU selection: accept H100 (80 GB), H200 (141 GB), or L40 (48 GB) --
+# whichever the LSF gpu queue can place first. Per bhosts, gpu_h100
+# (~109 free) and gpu_h200 have far more free capacity than gpu_l40
+# (closed/full), so this starts much faster than L40-only. Note: the
+# LSF `gpu` queue historically routes to h100/l40 but NOT h200 (h200
+# lives in other queues), so in practice this lands on H100 or L40.
+# All three are >= 48 GB, so the config default batch_size 16 fits.
 #
 # Host memory: on Hazel LSF, rusage[mem] is in GB (the default was
 # mem=2.00/task). rusage[mem=4] requests 4 GB/task x 8 tasks = 32 GB,
