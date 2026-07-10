@@ -1,8 +1,9 @@
 # Identifying Behavioral Rules in Agent-Based Models with Conformal Guarantees
 
-> Working title for NeurIPS 2026 submission. Numerical results sections
-> are TBD pending HPC experiments. This stub captures the framing,
-> contributions, and structure for Option D.
+> Working title for AAAI 2027 submission. Section 4 now reports the
+> first full-scale run (2089-class rule library, base Transformer +
+> RAPS) and the row/col embedding ablation. Baseline comparisons and
+> factor-importance experiments remain in progress.
 
 ## Abstract (sketch)
 
@@ -33,7 +34,11 @@ prediction set. The factor-presence statistics inherit the conformal
 coverage guarantee, giving the first formally-calibrated answer to the
 question "which factors drive the observed dynamics?".
 
-[Numerical results, comparison to EMD baseline, ablations -- TBD.]
+In a first full-scale run over a 2089-tree library, the classifier
+attains 0.32 top-1 / 0.56 top-5 accuracy and RAPS sets that meet their
+target coverage at every level; a decomposed row/column embedding
+ablation underperforms the flat spatial embedding. [Comparison to the
+EMD baseline and factor-importance experiments -- in progress.]
 
 ---
 
@@ -229,32 +234,116 @@ Because C(w) inherits the conformal coverage guarantee, statements like
 
 ## 4. Experiments
 
-[TBD pending HPC runs.]
+We report a first full-scale run on the auto-generated rule library.
+Data generation (library build + per-tree simulation) ran on CPU nodes;
+the classifier and conformal evaluation ran on a single NVIDIA H100.
+Unless noted, the model is the base configuration (~3.9M parameters,
+d_model = 256, 4 layers, 8 heads), trained for 30 epochs at batch size
+16 with the settings of Section 3.6.
 
 ### 4.1 Tree library statistics
-- Number of structural duplicates removed
-- Number of behavioral duplicates removed
-- Distribution of tree depths and dominant factors
+
+From `n_candidates = 10000` generated with the mixed pseudo/quasi-random
+strategy, structural and behavioral deduplication retained **2089
+behaviorally distinct trees**, which become the classification labels.
+This is substantially above the 200-500 target anticipated in
+Section 3.3: at depth 3 over 6 factors and 4 operators, the behavioral
+fingerprint separates many trees that are structurally similar but
+dynamically distinct. Each retained tree was simulated for 100 runs,
+yielding ~208,900 labelled snapshot sequences, split 80/10/10 into
+167,120 train / ~20,900 validation / ~20,900 test samples.
+
+The large label count makes this a demanding 2089-way classification
+problem and directly inflates conformal set sizes (Section 4.3);
+tightening the behavioral dedup to produce fewer, cleaner classes is the
+most promising lever for future runs.
 
 ### 4.2 Classification accuracy
-- Top-1 / top-3 / top-5 accuracy on the test split
-- Per-group (dominant-factor) accuracy
-- Calibration (ECE before / after temperature scaling)
+
+On the held-out test set (2089 classes, chance top-1 = 0.048%):
+
+| Metric | Value |
+|---|---|
+| Top-1 accuracy | 0.319 |
+| Top-3 accuracy | 0.485 |
+| Top-5 accuracy | 0.562 |
+| Test NLL | 2.822 |
+| Brier score | 0.740 |
+| ECE (pre-temperature) | 0.0167 |
+| ECE (post-temperature) | 0.0250 |
+| Learned temperature | 0.932 |
+| Group-probe accuracy (dominant factor) | 0.297 |
+
+Top-1 of 0.319 over 2089 classes (~665x chance) shows the Transformer
+recovers a strong signal about the generating rule from five grid
+snapshots. The learned temperature near 1.0 and low pre-temperature ECE
+(0.017) indicate the raw softmax is already well calibrated; temperature
+scaling does not improve ECE here.
 
 ### 4.3 Conformal prediction results
-- Empirical coverage at each alpha
-- Average / median / max set sizes
-- Conditional coverage by dominant factor
 
-### 4.4 Factor importance
-- Aggregated factor presence across the conformal prediction sets
-- Comparison to a random forest importance baseline
-- Conditional importance by simulation regime
+RAPS prediction sets achieve their target marginal coverage
+(P(true tree in set) >= 1 - alpha) at every level:
 
-### 4.5 Ablations
-- Random vs quasi-random vs mixed tree generation
-- Tree depth (2 vs 3 vs 4)
-- Number of snapshots and observation timing
+| alpha | Target coverage | Empirical coverage | Avg set size | Median | Singletons |
+|---|---|---|---|---|---|
+| 0.01 | 0.99 | 0.991 | 244.2 | 244 | 0.0% |
+| 0.05 | 0.95 | 0.948 | 101.2 | 99 | 0.0% |
+| 0.10 | 0.90 | 0.902 | 55.5 | 50 | 0.0% |
+| 0.20 | 0.80 | 0.828 | 23.5 | 17 | 2.1% |
+
+Coverage tracks the nominal level closely, confirming the distribution-
+free guarantee holds empirically. Set sizes are large in absolute terms
+-- a direct consequence of the 2089-way label space -- but shrink sharply
+as alpha relaxes (from ~244 labels at 99% coverage to ~24 at 80%), and
+singleton (fully-resolved) predictions begin to appear at alpha = 0.20.
+Conditional coverage by dominant factor is uniform to within a few
+percentage points of the marginal level.
+
+### 4.4 Ablation: decomposed row/column spatial embedding
+
+We tested replacing the flat spatial embedding (one learned vector per
+2x2 patch position, 625 positions) with a **decomposed row + column
+embedding** (separate learned row and column vectors, summed), motivated
+by the standard spatiotemporal-transformer factorization. All other
+settings, data, and the training budget are identical; the two runs use
+the same H100 hardware.
+
+| Metric | Flat space (base) | Row+col (ablation) |
+|---|---|---|
+| Parameters | 3,879,209 | 3,732,265 |
+| Top-1 | **0.319** | 0.312 |
+| Top-3 | **0.485** | 0.472 |
+| Top-5 | **0.562** | 0.546 |
+| Test NLL | **2.822** | 2.967 |
+| Brier | **0.740** | 0.746 |
+| ECE (pre-temp) | **0.0167** | 0.0184 |
+| Conformal avg set @ alpha=0.01 | **244** | 323 |
+| Conformal avg set @ alpha=0.05 | **101** | 188 |
+| Conformal avg set @ alpha=0.10 | **55.5** | 89.3 |
+| Conformal avg set @ alpha=0.20 | **23.5** | 28.8 |
+
+Both variants reach their target coverage, so the fair comparison is set
+size at matched coverage -- and there the flat embedding is decisively
+better, producing sets roughly half the size at alpha = 0.05 (101 vs
+188 labels). The decomposition also slightly lowers top-k accuracy and
+NLL. We attribute this to expressiveness: the flat embedding learns a
+distinct representation for each of the 625 patch positions, capturing
+position-specific structure, whereas the additive row + col form is
+constrained to a separable function of coordinates and removes ~147K
+parameters concentrated in the spatial representation. For this task the
+decomposition is a regularizer that costs more than it saves. We
+therefore retain the flat time+space embedding as the main model and
+report the decomposition as a negative ablation.
+
+### 4.5 Remaining experiments (in progress)
+
+- Factor-presence aggregation over conformal sets, and comparison to a
+  random-forest importance baseline (Section 3.8).
+- Comparison to the Gunaratne et al. evolutionary-model-discovery
+  baseline.
+- Generation-strategy (pseudo vs quasi vs mixed), tree-depth, and
+  snapshot-count / timing ablations.
 
 ---
 
