@@ -49,12 +49,21 @@ def compute_nonconformity_scores(
         # Find where the true label appears in the sorted order
         true_rank = np.where(sorted_indices == labels[i])[0][0]
 
-        # APS score: cumulative probability up to and including the true class
-        score = cumsum[true_rank]
-
-        # Add randomization to break ties (Vovk et al.)
-        if true_rank > 0:
-            score = score - np.random.uniform(0, sorted_probs[true_rank])
+        # Randomized APS score (Romano et al. 2020; Angelopoulos et al. 2021):
+        #
+        #     E = sum_{j ranked above y} p_j  +  u * p_y,    u ~ U(0, 1)
+        #
+        # Equivalently, the cumulative probability through the true class minus
+        # a uniform draw on (0, p_y). The randomization must be applied at
+        # EVERY rank, including rank 0.
+        #
+        # It was previously skipped when the true class was ranked first, which
+        # assigned those samples the full p_max instead of u * p_max. For an
+        # accurate model most calibration samples ARE rank 0, so their scores
+        # were systematically inflated, q_hat was inflated with them, and every
+        # prediction set came out too large: coverage sat near 0.97 regardless
+        # of alpha, and set size barely responded to alpha at all.
+        score = cumsum[true_rank] - np.random.uniform(0, sorted_probs[true_rank])
 
         # RAPS regularization
         if method == "raps":
@@ -90,11 +99,33 @@ def conformal_predict(
     method: str = "raps",
     k_reg: int = 5,
     lambda_reg: float = 0.01,
+    randomized: bool = True,
+    allow_empty: bool = False,
 ) -> List[np.ndarray]:
     """Construct prediction sets for test samples.
 
-    For each sample, include classes in descending probability order
-    until the cumulative score exceeds q_hat.
+    Classes are added in descending probability order until the score exceeds
+    q_hat. The score MUST be built the same way it was during calibration,
+    otherwise the coverage guarantee is not the one that was calibrated for.
+
+    randomized:
+        Include the class that crosses the threshold only to the extent that a
+        uniform draw says it belongs, mirroring the u * p_y term in the
+        calibration score (compute_nonconformity_scores). This is the standard
+        randomized APS/RAPS construction and yields coverage close to the
+        nominal 1 - alpha.
+
+        With randomized=False the crossing class is ALWAYS included, which is
+        the conservative construction: coverage still satisfies the >= 1 - alpha
+        guarantee, but overshoots it, and the overshoot is large when a single
+        class carries much of the mass. On an 11-class problem this produced
+        0.91 coverage against a 0.80 target.
+
+    allow_empty:
+        The randomized rule can return an empty set when the top class alone
+        already exceeds q_hat. Empty sets are legitimate under the guarantee but
+        awkward to interpret, so by default the top-1 class is always retained.
+        This costs a little coverage overshoot and is the usual convention.
 
     Returns: list of arrays, each containing class indices in the set.
     """
@@ -106,15 +137,30 @@ def conformal_predict(
         sorted_probs = probs[i][sorted_indices]
         cumsum = np.cumsum(sorted_probs)
 
-        # Include classes until cumulative score exceeds q_hat
         pred_set = []
         for j in range(C):
             score = cumsum[j]
             if method == "raps":
                 score += lambda_reg * max(0, j + 1 - k_reg)
-            pred_set.append(sorted_indices[j])
-            if score >= q_hat:
-                break
+
+            if score < q_hat:
+                # This class is inside the threshold outright.
+                pred_set.append(sorted_indices[j])
+                continue
+
+            # This class crosses the threshold. Under the randomized rule it is
+            # kept only if the same u * p_j term used in calibration leaves it
+            # below q_hat.
+            if not randomized:
+                pred_set.append(sorted_indices[j])
+            else:
+                u = np.random.uniform(0, 1)
+                if score - u * sorted_probs[j] <= q_hat:
+                    pred_set.append(sorted_indices[j])
+            break
+
+        if not pred_set and not allow_empty:
+            pred_set = [sorted_indices[0]]
 
         prediction_sets.append(np.array(pred_set))
 

@@ -1,0 +1,48 @@
+# CONTROL RUN for the paper's headline claim.
+#
+# The claim is "invariance, not architecture": the same axial Transformer
+# scores 0.825 on raw coordinates and 0.927 on rotation-invariant features.
+#
+# But the first raw run trained for 40 epochs and the invariant run for 120,
+# so that 10-point gap confounds INVARIANCE with TRAINING BUDGET. This config
+# is identical to configs/fish_transformer_inv.yaml in every respect except
+# the feature set: same architecture, same 120 epochs, same patience, same
+# augmentation, same folds, same seed. Only 'features' differs.
+#
+# If raw features at 120 epochs still land near 0.825, the gap is invariance
+# and the headline stands. If they close most of the way to 0.927, the gap was
+# mostly training budget and the claim must be withdrawn.
+#
+# Rotation augmentation IS active here (unlike the invariant run, where it is
+# a no-op), which is exactly the point: it is the model's only route to
+# learning the rotational symmetry from data.
+
+tag: transformer_raw120_T64
+
+window: 64
+features: all           # the 20 raw per-agent features, incl. absolute x, y
+folds: [0, 1, 2, 3, 4]
+seed: 20260713
+
+d_model: 128
+n_heads: 8
+n_layers: 4
+dropout: 0.1
+
+batch_size: 64
+epochs: 120             # matched to the invariant run
+patience: 25
+lr: 3.0e-4
+weight_decay: 0.01
+label_smoothing: 0.05
+num_workers: 0
+
+augment:
+  enabled: true
+  rotate: true
+  reflect: true
+  permute: true
+
+alphas: [0.05, 0.10, 0.20]
+raps_lambda: 0.1
+raps_k_reg: 2
