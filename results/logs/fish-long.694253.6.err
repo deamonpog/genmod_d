@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "/gpfs_common/share01/cads/cdondim/genmod_d/scripts/fish/08_train_gru_baseline.py", line 193, in <module>
+    main()
+  File "/gpfs_common/share01/cads/cdondim/genmod_d/scripts/fish/08_train_gru_baseline.py", line 134, in main
+    hidden=args.hidden, n_layers=args.layers).to(device)
+                                              ^^^^^^^^^^
+  File "/usr/local/usrapps/cads/cdondim/genmod-env/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1343, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/usrapps/cads/cdondim/genmod-env/lib/python3.11/site-packages/torch/nn/modules/module.py", line 903, in _apply
+    module._apply(fn)
+  File "/usr/local/usrapps/cads/cdondim/genmod-env/lib/python3.11/site-packages/torch/nn/modules/rnn.py", line 285, in _apply
+    ret = super()._apply(fn, recurse)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/usrapps/cads/cdondim/genmod-env/lib/python3.11/site-packages/torch/nn/modules/module.py", line 930, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/usr/local/usrapps/cads/cdondim/genmod-env/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1329, in convert
+    return t.to(
+           ^^^^^
+RuntimeError: CUDA error: out of memory
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+

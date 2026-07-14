@@ -1,0 +1,103 @@
+=== Fish case study, long windows / ablations [LSF] ===
+Host:    gpu16
+JobID:   694253  index 6
+Started: Tue Jul 14 04:56:21 AM EDT 2026
+NVIDIA H100 PCIe, 81559 MiB
+
+GRU baseline, T=512, device cuda, 13 group statistics per event
+
+  fold 0: building group-state sequences ...
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@gpu16>
+Subject: Job 694253[6]: <fish-long[1-9]> in cluster <Hazel> Exited
+
+Job <fish-long[1-9]> was submitted from host <login01.hpc.ncsu.edu> by user <cdondim> in cluster <Hazel> at Tue Jul 14 02:38:07 2026
+Job was executed on host(s) <8*gpu16>, in queue <gpu>, as user <cdondim> in cluster <Hazel> at Tue Jul 14 04:56:14 2026
+</home/cdondim> was used as the home directory.
+</share/cads/cdondim/genmod_d> was used as the working directory.
+Started at Tue Jul 14 04:56:14 2026
+Terminated at Tue Jul 14 04:56:33 2026
+Results reported at Tue Jul 14 04:56:33 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#BSUB -J fish-long[1-9]
+#BSUB -q gpu
+#BSUB -R "select[h100||h200||l40s] rusage[mem=32] span[hosts=1]"
+#BSUB -gpu "num=1"
+#BSUB -n 8
+#BSUB -W 24:00
+#BSUB -o results/logs/fish-long.%J.%I.out
+#BSUB -e results/logs/fish-long.%J.%I.err
+
+# Fish case study: the LONG-WINDOW and ablation runs, as an LSF job array.
+#
+# Split of labour with the local RTX 4090:
+#
+#   local   T=16, T=32, T=64   -- cheap, on the critical path for the paper,
+#                                 and guaranteed to finish before the deadline
+#   Hazel   T=128, 256, 512    -- expensive (T=512 alone is ~12 h on a 4090),
+#           + the ablations       and NOT on the critical path. If they land in
+#                                 time they go in the paper; if not, future work.
+#
+# Cost scales roughly linearly in T: attention is O(A*T^2 + T*A^2) per window
+# and the window count falls as 1/T. T=512 is about 7x a T=64 epoch, but it has
+# only ~3k training windows, so the epoch budget is cut accordingly (a 120-epoch
+# schedule there would overfit, not help).
+#
+# Array indices (LSF is 1-based):
+#   1  transformer, invariant features, T=128
+#   2  transformer, invariant features, T=256
+#   3  transformer, invariant features, T=512
+#   4  GRU baseline, T=128
+#   5  GRU baseline, T=256
+#   6  GRU baseline, T=512
+#   7  ablation: raw ("all") features at T=64      -- the invariance comparison
+#   8  ablation: basic (solo kinematics) at T=64   -- the relational comparison
+#   9  ablation: no augmentation at T=64
+#
+# PREREQUISITE: data/fish/{runs.npz,splits.json,windows_T*.npz} must exist.
+# They are produced by scripts/fish/01..06, which are CPU-only and take a few
+# minutes. Run them once on a login node or in an interactive session:
+#
+#   python scripts/fish/01_inspect_agent_fish_data.py
+#   python scripts/fish/02_create_rule_lookup.py
+#   python scripts/fish/03_preprocess_agent_trajectories.py
+#   python scripts/fish/04_create_grouped_splits.py
+#   python scripts/fish/05_create_trajectory_windows.py
+#   python scripts/fish/06_create_summary_features.py
+#
+# Submission (LSF uses a redirect):
+#   bsub < hpc/hazel_lsf/fish_long_windows.sh
+
+
+(... more ...)
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   13.89 sec.
+    Max Memory :                                 -
+    Average Memory :                             -
+    Total Requested Memory :                     32.00 GB
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              -
+    Max Threads :                                -
+    Run time :                                   56 sec.
+    Turnaround time :                            8306 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <results/logs/fish-long.694253.6.err> for stderr output of this job.
+

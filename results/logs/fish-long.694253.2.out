@@ -1,0 +1,573 @@
+=== Fish case study, long windows / ablations [LSF] ===
+Host:    gpu16
+JobID:   694253  index 2
+Started: Tue Jul 14 03:51:41 AM EDT 2026
+NVIDIA H100 PCIe, 81559 MiB
+
+Config configs/fish_ablations/fish_inv_T256.yaml   device cuda   T=256   features=invariant   augment=True
+GPU: NVIDIA H100 PCIe
+  note: features=invariant, so rotation augmentation is a no-op and is disabled
+  fold 0: 1837195 params, 5696 train windows, 12 feats
+    epoch  0  loss 2.1377  val_acc 0.4682  (11s)
+    epoch  1  loss 1.5491  val_acc 0.6433  (10s)
+    epoch  2  loss 1.2301  val_acc 0.7006  (10s)
+    epoch  3  loss 1.1137  val_acc 0.6879  (10s)
+    epoch  4  loss 1.0583  val_acc 0.7102  (10s)
+    epoch  5  loss 1.0014  val_acc 0.7166  (10s)
+    epoch  6  loss 0.9588  val_acc 0.7134  (10s)
+    epoch  7  loss 0.9472  val_acc 0.7261  (10s)
+    epoch  8  loss 0.8992  val_acc 0.7643  (10s)
+    epoch  9  loss 0.8635  val_acc 0.7739  (10s)
+    epoch 10  loss 0.8390  val_acc 0.7325  (10s)
+    epoch 11  loss 0.8450  val_acc 0.7420  (10s)
+    epoch 12  loss 0.8097  val_acc 0.7452  (10s)
+    epoch 13  loss 0.7987  val_acc 0.7707  (10s)
+    epoch 14  loss 0.7397  val_acc 0.7930  (10s)
+    epoch 15  loss 0.7318  val_acc 0.8280  (10s)
+    epoch 16  loss 0.7043  val_acc 0.8217  (10s)
+    epoch 17  loss 0.6827  val_acc 0.7866  (10s)
+    epoch 18  loss 0.6801  val_acc 0.8025  (10s)
+    epoch 19  loss 0.6511  val_acc 0.7994  (10s)
+    epoch 20  loss 0.6331  val_acc 0.7771  (10s)
+    epoch 21  loss 0.6299  val_acc 0.7994  (10s)
+    epoch 22  loss 0.6005  val_acc 0.8057  (10s)
+    epoch 23  loss 0.5827  val_acc 0.8057  (10s)
+    epoch 24  loss 0.5654  val_acc 0.7771  (10s)
+    epoch 25  loss 0.5658  val_acc 0.7994  (10s)
+    epoch 26  loss 0.5394  val_acc 0.8089  (10s)
+    epoch 27  loss 0.5256  val_acc 0.7930  (10s)
+    epoch 28  loss 0.5166  val_acc 0.8121  (10s)
+    epoch 29  loss 0.4972  val_acc 0.8153  (10s)
+    epoch 30  loss 0.4801  val_acc 0.8280  (10s)
+    epoch 31  loss 0.4727  val_acc 0.8217  (10s)
+    epoch 32  loss 0.4528  val_acc 0.8217  (10s)
+    epoch 33  loss 0.4536  val_acc 0.8248  (10s)
+    epoch 34  loss 0.4339  val_acc 0.7994  (10s)
+    epoch 35  loss 0.4266  val_acc 0.8376  (10s)
+    epoch 36  loss 0.4112  val_acc 0.8280  (10s)
+    epoch 37  loss 0.4014  val_acc 0.8248  (10s)
+    epoch 38  loss 0.4010  val_acc 0.8057  (10s)
+    epoch 39  loss 0.3854  val_acc 0.8217  (10s)
+    epoch 40  loss 0.3782  val_acc 0.8312  (10s)
+    epoch 41  loss 0.3695  val_acc 0.8153  (10s)
+    epoch 42  loss 0.3768  val_acc 0.8344  (10s)
+    epoch 43  loss 0.3491  val_acc 0.8089  (10s)
+    epoch 44  loss 0.3485  val_acc 0.8185  (10s)
+    epoch 45  loss 0.3473  val_acc 0.8344  (10s)
+    epoch 46  loss 0.3451  val_acc 0.8344  (10s)
+    epoch 47  loss 0.3335  val_acc 0.8344  (10s)
+    epoch 48  loss 0.3273  val_acc 0.8248  (10s)
+    epoch 49  loss 0.3249  val_acc 0.8025  (10s)
+    epoch 50  loss 0.3261  val_acc 0.8153  (10s)
+    epoch 51  loss 0.3193  val_acc 0.8344  (10s)
+    epoch 52  loss 0.3157  val_acc 0.8248  (10s)
+    epoch 53  loss 0.3148  val_acc 0.8025  (10s)
+    epoch 54  loss 0.3099  val_acc 0.8185  (10s)
+    epoch 55  loss 0.3072  val_acc 0.8121  (10s)
+    epoch 56  loss 0.3062  val_acc 0.8376  (10s)
+    epoch 57  loss 0.3044  val_acc 0.8408  (10s)
+    epoch 58  loss 0.3040  val_acc 0.8344  (10s)
+    epoch 59  loss 0.3020  val_acc 0.8312  (10s)
+    epoch 60  loss 0.3017  val_acc 0.8280  (10s)
+    epoch 61  loss 0.3011  val_acc 0.8439  (10s)
+    epoch 62  loss 0.3001  val_acc 0.8217  (10s)
+    epoch 63  loss 0.3005  val_acc 0.8344  (10s)
+    epoch 64  loss 0.2987  val_acc 0.8280  (10s)
+    epoch 65  loss 0.2983  val_acc 0.8344  (10s)
+    epoch 66  loss 0.3003  val_acc 0.8408  (10s)
+    epoch 67  loss 0.2981  val_acc 0.8376  (10s)
+    epoch 68  loss 0.2978  val_acc 0.8280  (10s)
+    epoch 69  loss 0.2977  val_acc 0.8408  (10s)
+    epoch 70  loss 0.2964  val_acc 0.8344  (10s)
+    epoch 71  loss 0.2968  val_acc 0.8439  (10s)
+    epoch 72  loss 0.2968  val_acc 0.8312  (10s)
+    epoch 73  loss 0.2967  val_acc 0.8439  (10s)
+    epoch 74  loss 0.2972  val_acc 0.8376  (10s)
+    epoch 75  loss 0.2967  val_acc 0.8344  (10s)
+    epoch 76  loss 0.2963  val_acc 0.8408  (10s)
+    epoch 77  loss 0.2962  val_acc 0.8376  (10s)
+    epoch 78  loss 0.2971  val_acc 0.8376  (10s)
+    epoch 79  loss 0.2968  val_acc 0.8376  (10s)
+    best val_acc 0.8439, temperature 1.232
+    calib  acc 0.8551
+    test   acc 0.8592
+  note: features=invariant, so rotation augmentation is a no-op and is disabled
+  fold 1: 1837195 params, 5702 train windows, 12 feats
+    epoch  0  loss 2.1804  val_acc 0.4146  (10s)
+    epoch  1  loss 1.6272  val_acc 0.5791  (10s)
+    epoch  2  loss 1.2930  val_acc 0.6519  (10s)
+    epoch  3  loss 1.1218  val_acc 0.7215  (10s)
+    epoch  4  loss 1.0622  val_acc 0.7278  (10s)
+    epoch  5  loss 1.0036  val_acc 0.6614  (10s)
+    epoch  6  loss 0.9727  val_acc 0.7184  (10s)
+    epoch  7  loss 0.9121  val_acc 0.7278  (10s)
+    epoch  8  loss 0.8775  val_acc 0.7627  (10s)
+    epoch  9  loss 0.8336  val_acc 0.7911  (10s)
+    epoch 10  loss 0.8329  val_acc 0.6867  (10s)
+    epoch 11  loss 0.8048  val_acc 0.7532  (10s)
+    epoch 12  loss 0.7819  val_acc 0.7911  (10s)
+    epoch 13  loss 0.7711  val_acc 0.7405  (10s)
+    epoch 14  loss 0.7603  val_acc 0.7563  (10s)
+    epoch 15  loss 0.7208  val_acc 0.7975  (10s)
+    epoch 16  loss 0.7164  val_acc 0.7753  (10s)
+    epoch 17  loss 0.6998  val_acc 0.7658  (10s)
+    epoch 18  loss 0.7266  val_acc 0.8070  (10s)
+    epoch 19  loss 0.6816  val_acc 0.7943  (10s)
+    epoch 20  loss 0.6577  val_acc 0.8165  (10s)
+    epoch 21  loss 0.6456  val_acc 0.8070  (10s)
+    epoch 22  loss 0.6314  val_acc 0.8133  (10s)
+    epoch 23  loss 0.6285  val_acc 0.8196  (10s)
+    epoch 24  loss 0.6002  val_acc 0.8386  (10s)
+    epoch 25  loss 0.5878  val_acc 0.8449  (10s)
+    epoch 26  loss 0.5867  val_acc 0.8323  (10s)
+    epoch 27  loss 0.5531  val_acc 0.8418  (10s)
+    epoch 28  loss 0.5461  val_acc 0.8196  (10s)
+    epoch 29  loss 0.5444  val_acc 0.8228  (10s)
+    epoch 30  loss 0.5153  val_acc 0.8101  (10s)
+    epoch 31  loss 0.5139  val_acc 0.8418  (10s)
+    epoch 32  loss 0.4869  val_acc 0.8386  (10s)
+    epoch 33  loss 0.4946  val_acc 0.8070  (10s)
+    epoch 34  loss 0.4671  val_acc 0.8481  (10s)
+    epoch 35  loss 0.4538  val_acc 0.8133  (10s)
+    epoch 36  loss 0.4393  val_acc 0.8196  (10s)
+    epoch 37  loss 0.4257  val_acc 0.8418  (10s)
+    epoch 38  loss 0.4168  val_acc 0.8386  (10s)
+    epoch 39  loss 0.4095  val_acc 0.8291  (10s)
+    epoch 40  loss 0.4053  val_acc 0.8354  (10s)
+    epoch 41  loss 0.3946  val_acc 0.8101  (10s)
+    epoch 42  loss 0.3809  val_acc 0.8418  (10s)
+    epoch 43  loss 0.3717  val_acc 0.8608  (10s)
+    epoch 44  loss 0.3607  val_acc 0.8513  (10s)
+    epoch 45  loss 0.3624  val_acc 0.8386  (10s)
+    epoch 46  loss 0.3510  val_acc 0.8386  (10s)
+    epoch 47  loss 0.3474  val_acc 0.8259  (10s)
+    epoch 48  loss 0.3469  val_acc 0.8481  (10s)
+    epoch 49  loss 0.3406  val_acc 0.8291  (10s)
+    epoch 50  loss 0.3356  val_acc 0.8544  (10s)
+    epoch 51  loss 0.3262  val_acc 0.8449  (10s)
+    epoch 52  loss 0.3210  val_acc 0.8418  (10s)
+    epoch 53  loss 0.3194  val_acc 0.8418  (10s)
+    epoch 54  loss 0.3198  val_acc 0.8608  (10s)
+    epoch 55  loss 0.3140  val_acc 0.8639  (10s)
+    epoch 56  loss 0.3136  val_acc 0.8639  (10s)
+    epoch 57  loss 0.3132  val_acc 0.8513  (10s)
+    epoch 58  loss 0.3092  val_acc 0.8576  (10s)
+    epoch 59  loss 0.3091  val_acc 0.8418  (10s)
+    epoch 60  loss 0.3080  val_acc 0.8449  (10s)
+    epoch 61  loss 0.3059  val_acc 0.8544  (10s)
+    epoch 62  loss 0.3056  val_acc 0.8671  (10s)
+    epoch 63  loss 0.3042  val_acc 0.8513  (10s)
+    epoch 64  loss 0.3033  val_acc 0.8576  (10s)
+    epoch 65  loss 0.3031  val_acc 0.8639  (10s)
+    epoch 66  loss 0.3024  val_acc 0.8544  (10s)
+    epoch 67  loss 0.3017  val_acc 0.8671  (10s)
+    epoch 68  loss 0.3021  val_acc 0.8513  (10s)
+    epoch 69  loss 0.3007  val_acc 0.8576  (10s)
+    epoch 70  loss 0.3013  val_acc 0.8513  (10s)
+    epoch 71  loss 0.3006  val_acc 0.8639  (10s)
+    epoch 72  loss 0.3007  val_acc 0.8639  (10s)
+    epoch 73  loss 0.3005  val_acc 0.8576  (10s)
+    epoch 74  loss 0.3003  val_acc 0.8639  (10s)
+    epoch 75  loss 0.2999  val_acc 0.8639  (10s)
+    epoch 76  loss 0.2996  val_acc 0.8639  (10s)
+    epoch 77  loss 0.3001  val_acc 0.8608  (10s)
+    epoch 78  loss 0.2994  val_acc 0.8608  (10s)
+    epoch 79  loss 0.2994  val_acc 0.8608  (10s)
+    best val_acc 0.8671, temperature 1.191
+    calib  acc 0.8389
+    test   acc 0.8608
+  note: features=invariant, so rotation augmentation is a no-op and is disabled
+  fold 2: 1837195 params, 5705 train windows, 12 feats
+    epoch  0  loss 2.1820  val_acc 0.3829  (10s)
+    epoch  1  loss 1.6726  val_acc 0.5696  (10s)
+    epoch  2  loss 1.2707  val_acc 0.6487  (10s)
+    epoch  3  loss 1.1335  val_acc 0.6677  (10s)
+    epoch  4  loss 1.0635  val_acc 0.6582  (10s)
+    epoch  5  loss 1.0534  val_acc 0.7437  (10s)
+    epoch  6  loss 0.9777  val_acc 0.6709  (10s)
+    epoch  7  loss 0.9372  val_acc 0.7785  (10s)
+    epoch  8  loss 0.9046  val_acc 0.7880  (10s)
+    epoch  9  loss 0.8661  val_acc 0.7152  (10s)
+    epoch 10  loss 0.8370  val_acc 0.7405  (10s)
+    epoch 11  loss 0.8483  val_acc 0.8006  (10s)
+    epoch 12  loss 0.8099  val_acc 0.7342  (10s)
+    epoch 13  loss 0.7538  val_acc 0.7911  (10s)
+    epoch 14  loss 0.7531  val_acc 0.6994  (10s)
+    epoch 15  loss 0.7590  val_acc 0.8165  (10s)
+    epoch 16  loss 0.7209  val_acc 0.8228  (10s)
+    epoch 17  loss 0.7186  val_acc 0.7975  (10s)
+    epoch 18  loss 0.6951  val_acc 0.8228  (10s)
+    epoch 19  loss 0.6662  val_acc 0.8671  (10s)
+    epoch 20  loss 0.6628  val_acc 0.8133  (10s)
+    epoch 21  loss 0.6505  val_acc 0.8703  (10s)
+    epoch 22  loss 0.6348  val_acc 0.8418  (10s)
+    epoch 23  loss 0.6051  val_acc 0.8354  (10s)
+    epoch 24  loss 0.6070  val_acc 0.8608  (10s)
+    epoch 25  loss 0.5841  val_acc 0.8544  (10s)
+    epoch 26  loss 0.5732  val_acc 0.7816  (10s)
+    epoch 27  loss 0.5772  val_acc 0.8291  (10s)
+    epoch 28  loss 0.5398  val_acc 0.8481  (10s)
+    epoch 29  loss 0.5220  val_acc 0.8038  (10s)
+    epoch 30  loss 0.5182  val_acc 0.8386  (10s)
+    epoch 31  loss 0.5042  val_acc 0.8323  (10s)
+    epoch 32  loss 0.4904  val_acc 0.8386  (10s)
+    epoch 33  loss 0.4807  val_acc 0.8544  (10s)
+    epoch 34  loss 0.4579  val_acc 0.8481  (10s)
+    epoch 35  loss 0.4554  val_acc 0.8734  (10s)
+    epoch 36  loss 0.4296  val_acc 0.8703  (10s)
+    epoch 37  loss 0.4178  val_acc 0.8513  (10s)
+    epoch 38  loss 0.4258  val_acc 0.8544  (10s)
+    epoch 39  loss 0.4023  val_acc 0.8513  (10s)
+    epoch 40  loss 0.3932  val_acc 0.8703  (10s)
+    epoch 41  loss 0.3908  val_acc 0.8703  (10s)
+    epoch 42  loss 0.3742  val_acc 0.8892  (10s)
+    epoch 43  loss 0.3679  val_acc 0.8703  (10s)
+    epoch 44  loss 0.3624  val_acc 0.8513  (10s)
+    epoch 45  loss 0.3550  val_acc 0.8639  (10s)
+    epoch 46  loss 0.3558  val_acc 0.8766  (10s)
+    epoch 47  loss 0.3439  val_acc 0.8639  (10s)
+    epoch 48  loss 0.3343  val_acc 0.8576  (10s)
+    epoch 49  loss 0.3308  val_acc 0.8766  (10s)
+    epoch 50  loss 0.3333  val_acc 0.8608  (10s)
+    epoch 51  loss 0.3220  val_acc 0.8924  (10s)
+    epoch 52  loss 0.3215  val_acc 0.8639  (10s)
+    epoch 53  loss 0.3192  val_acc 0.8797  (10s)
+    epoch 54  loss 0.3114  val_acc 0.8703  (10s)
+    epoch 55  loss 0.3121  val_acc 0.8797  (10s)
+    epoch 56  loss 0.3090  val_acc 0.8829  (10s)
+    epoch 57  loss 0.3057  val_acc 0.8576  (10s)
+    epoch 58  loss 0.3058  val_acc 0.8734  (10s)
+    epoch 59  loss 0.3043  val_acc 0.8734  (10s)
+    epoch 60  loss 0.3038  val_acc 0.8829  (10s)
+    epoch 61  loss 0.3035  val_acc 0.8671  (10s)
+    epoch 62  loss 0.3061  val_acc 0.8797  (10s)
+    epoch 63  loss 0.3020  val_acc 0.8766  (10s)
+    epoch 64  loss 0.3006  val_acc 0.8861  (10s)
+    epoch 65  loss 0.2998  val_acc 0.8703  (10s)
+    epoch 66  loss 0.3003  val_acc 0.8861  (10s)
+    epoch 67  loss 0.2999  val_acc 0.8766  (10s)
+    epoch 68  loss 0.2991  val_acc 0.8734  (10s)
+    epoch 69  loss 0.2981  val_acc 0.8734  (10s)
+    epoch 70  loss 0.2981  val_acc 0.8829  (10s)
+    epoch 71  loss 0.2976  val_acc 0.8734  (10s)
+    epoch 72  loss 0.2985  val_acc 0.8734  (10s)
+    epoch 73  loss 0.2980  val_acc 0.8703  (10s)
+    epoch 74  loss 0.2983  val_acc 0.8639  (10s)
+    epoch 75  loss 0.2971  val_acc 0.8703  (10s)
+    epoch 76  loss 0.2972  val_acc 0.8703  (10s)
+    early stop (no val improvement for 25 epochs)
+    best val_acc 0.8924, temperature 1.105
+    calib  acc 0.8482
+    test   acc 0.8370
+  note: features=invariant, so rotation augmentation is a no-op and is disabled
+  fold 3: 1837195 params, 5706 train windows, 12 feats
+    epoch  0  loss 2.1157  val_acc 0.4304  (10s)
+    epoch  1  loss 1.5480  val_acc 0.6297  (10s)
+    epoch  2  loss 1.2292  val_acc 0.7120  (10s)
+    epoch  3  loss 1.1394  val_acc 0.6203  (10s)
+    epoch  4  loss 1.0801  val_acc 0.6171  (10s)
+    epoch  5  loss 1.0004  val_acc 0.6804  (10s)
+    epoch  6  loss 0.9761  val_acc 0.7437  (10s)
+    epoch  7  loss 0.9462  val_acc 0.7089  (10s)
+    epoch  8  loss 0.9119  val_acc 0.7563  (10s)
+    epoch  9  loss 0.8587  val_acc 0.7722  (10s)
+    epoch 10  loss 0.8248  val_acc 0.7785  (10s)
+    epoch 11  loss 0.8121  val_acc 0.7627  (10s)
+    epoch 12  loss 0.7830  val_acc 0.8070  (10s)
+    epoch 13  loss 0.7676  val_acc 0.7911  (10s)
+    epoch 14  loss 0.7474  val_acc 0.8418  (10s)
+    epoch 15  loss 0.7192  val_acc 0.7975  (10s)
+    epoch 16  loss 0.7043  val_acc 0.7975  (10s)
+    epoch 17  loss 0.6927  val_acc 0.8070  (10s)
+    epoch 18  loss 0.6953  val_acc 0.7658  (10s)
+    epoch 19  loss 0.6833  val_acc 0.8259  (10s)
+    epoch 20  loss 0.6457  val_acc 0.8196  (10s)
+    epoch 21  loss 0.6506  val_acc 0.8291  (10s)
+    epoch 22  loss 0.6207  val_acc 0.8449  (10s)
+    epoch 23  loss 0.6023  val_acc 0.8259  (10s)
+    epoch 24  loss 0.5908  val_acc 0.8608  (10s)
+    epoch 25  loss 0.5722  val_acc 0.8006  (10s)
+    epoch 26  loss 0.5747  val_acc 0.8386  (10s)
+    epoch 27  loss 0.5366  val_acc 0.8133  (10s)
+    epoch 28  loss 0.5389  val_acc 0.8386  (10s)
+    epoch 29  loss 0.5201  val_acc 0.8354  (10s)
+    epoch 30  loss 0.5025  val_acc 0.8418  (10s)
+    epoch 31  loss 0.4935  val_acc 0.8133  (10s)
+    epoch 32  loss 0.4689  val_acc 0.8133  (10s)
+    epoch 33  loss 0.4575  val_acc 0.7911  (10s)
+    epoch 34  loss 0.4514  val_acc 0.8228  (10s)
+    epoch 35  loss 0.4442  val_acc 0.8259  (10s)
+    epoch 36  loss 0.4256  val_acc 0.8291  (10s)
+    epoch 37  loss 0.4148  val_acc 0.8165  (10s)
+    epoch 38  loss 0.4035  val_acc 0.8291  (10s)
+    epoch 39  loss 0.4070  val_acc 0.8291  (10s)
+    epoch 40  loss 0.3878  val_acc 0.7975  (10s)
+    epoch 41  loss 0.3855  val_acc 0.8133  (10s)
+    epoch 42  loss 0.3798  val_acc 0.8291  (10s)
+    epoch 43  loss 0.3697  val_acc 0.8196  (10s)
+    epoch 44  loss 0.3573  val_acc 0.8323  (10s)
+    epoch 45  loss 0.3586  val_acc 0.8070  (10s)
+    epoch 46  loss 0.3480  val_acc 0.7943  (10s)
+    epoch 47  loss 0.3427  val_acc 0.8165  (10s)
+    epoch 48  loss 0.3376  val_acc 0.8228  (10s)
+    epoch 49  loss 0.3338  val_acc 0.8196  (10s)
+    early stop (no val improvement for 25 epochs)
+    best val_acc 0.8608, temperature 0.912
+    calib  acc 0.8195
+    test   acc 0.8035
+  note: features=invariant, so rotation augmentation is a no-op and is disabled
+  fold 4: 1837195 params, 5700 train windows, 12 feats
+    epoch  0  loss 2.1211  val_acc 0.4528  (10s)
+    epoch  1  loss 1.5820  val_acc 0.6478  (10s)
+    epoch  2  loss 1.2342  val_acc 0.6792  (10s)
+    epoch  3  loss 1.0951  val_acc 0.6761  (10s)
+    epoch  4  loss 1.0259  val_acc 0.7138  (10s)
+    epoch  5  loss 1.0179  val_acc 0.6384  (10s)
+    epoch  6  loss 0.9781  val_acc 0.7107  (10s)
+    epoch  7  loss 0.9091  val_acc 0.7390  (10s)
+    epoch  8  loss 0.8519  val_acc 0.7925  (10s)
+    epoch  9  loss 0.8268  val_acc 0.7925  (10s)
+    epoch 10  loss 0.8146  val_acc 0.8082  (10s)
+    epoch 11  loss 0.7973  val_acc 0.7987  (10s)
+    epoch 12  loss 0.7486  val_acc 0.8113  (10s)
+    epoch 13  loss 0.7366  val_acc 0.7547  (10s)
+    epoch 14  loss 0.7210  val_acc 0.8145  (10s)
+    epoch 15  loss 0.6942  val_acc 0.8365  (10s)
+    epoch 16  loss 0.6829  val_acc 0.8396  (10s)
+    epoch 17  loss 0.6710  val_acc 0.8459  (10s)
+    epoch 18  loss 0.6531  val_acc 0.8585  (10s)
+    epoch 19  loss 0.6524  val_acc 0.8711  (10s)
+    epoch 20  loss 0.6207  val_acc 0.8522  (10s)
+    epoch 21  loss 0.6030  val_acc 0.8679  (10s)
+    epoch 22  loss 0.5803  val_acc 0.8648  (10s)
+    epoch 23  loss 0.5712  val_acc 0.8648  (10s)
+    epoch 24  loss 0.5610  val_acc 0.8585  (10s)
+    epoch 25  loss 0.5321  val_acc 0.8019  (10s)
+    epoch 26  loss 0.5536  val_acc 0.8711  (10s)
+    epoch 27  loss 0.5122  val_acc 0.8428  (10s)
+    epoch 28  loss 0.4974  val_acc 0.8774  (10s)
+    epoch 29  loss 0.4724  val_acc 0.8145  (10s)
+    epoch 30  loss 0.4712  val_acc 0.8774  (10s)
+    epoch 31  loss 0.4493  val_acc 0.8333  (10s)
+    epoch 32  loss 0.4343  val_acc 0.8648  (10s)
+    epoch 33  loss 0.4217  val_acc 0.8333  (10s)
+    epoch 34  loss 0.4192  val_acc 0.8774  (10s)
+    epoch 35  loss 0.4150  val_acc 0.8585  (10s)
+    epoch 36  loss 0.3936  val_acc 0.8648  (10s)
+    epoch 37  loss 0.3769  val_acc 0.8522  (10s)
+    epoch 38  loss 0.3956  val_acc 0.8553  (10s)
+    epoch 39  loss 0.3772  val_acc 0.8711  (10s)
+    epoch 40  loss 0.3569  val_acc 0.8868  (10s)
+    epoch 41  loss 0.3563  val_acc 0.8616  (10s)
+    epoch 42  loss 0.3564  val_acc 0.8711  (10s)
+    epoch 43  loss 0.3510  val_acc 0.8679  (10s)
+    epoch 44  loss 0.3315  val_acc 0.8648  (10s)
+    epoch 45  loss 0.3337  val_acc 0.8774  (10s)
+    epoch 46  loss 0.3297  val_acc 0.8868  (10s)
+    epoch 47  loss 0.3230  val_acc 0.8742  (10s)
+    epoch 48  loss 0.3240  val_acc 0.8616  (10s)
+    epoch 49  loss 0.3202  val_acc 0.8742  (10s)
+    epoch 50  loss 0.3212  val_acc 0.8868  (10s)
+    epoch 51  loss 0.3126  val_acc 0.8648  (10s)
+    epoch 52  loss 0.3109  val_acc 0.8805  (10s)
+    epoch 53  loss 0.3097  val_acc 0.8491  (10s)
+    epoch 54  loss 0.3077  val_acc 0.8899  (10s)
+    epoch 55  loss 0.3061  val_acc 0.8711  (10s)
+    epoch 56  loss 0.3089  val_acc 0.8805  (10s)
+    epoch 57  loss 0.3036  val_acc 0.8679  (10s)
+    epoch 58  loss 0.3033  val_acc 0.8774  (10s)
+    epoch 59  loss 0.3017  val_acc 0.8616  (10s)
+    epoch 60  loss 0.2996  val_acc 0.8774  (10s)
+    epoch 61  loss 0.2999  val_acc 0.8868  (10s)
+    epoch 62  loss 0.3001  val_acc 0.8836  (10s)
+    epoch 63  loss 0.2995  val_acc 0.8899  (10s)
+    epoch 64  loss 0.2981  val_acc 0.8805  (10s)
+    epoch 65  loss 0.2980  val_acc 0.8805  (10s)
+    epoch 66  loss 0.2984  val_acc 0.8899  (10s)
+    epoch 67  loss 0.2990  val_acc 0.8899  (10s)
+    epoch 68  loss 0.2967  val_acc 0.8868  (10s)
+    epoch 69  loss 0.2963  val_acc 0.8899  (10s)
+    epoch 70  loss 0.2964  val_acc 0.8805  (10s)
+    epoch 71  loss 0.2970  val_acc 0.8899  (10s)
+    epoch 72  loss 0.2968  val_acc 0.8931  (10s)
+    epoch 73  loss 0.2969  val_acc 0.8899  (10s)
+    epoch 74  loss 0.2962  val_acc 0.8868  (10s)
+    epoch 75  loss 0.2967  val_acc 0.8868  (10s)
+    epoch 76  loss 0.2963  val_acc 0.8868  (10s)
+    epoch 77  loss 0.2963  val_acc 0.8899  (10s)
+    epoch 78  loss 0.2971  val_acc 0.8931  (10s)
+    epoch 79  loss 0.2966  val_acc 0.8931  (10s)
+    best val_acc 0.8931, temperature 1.075
+    calib  acc 0.8506
+    test   acc 0.8558
+
+Test accuracy over 5 folds: 0.8432 +- 0.0216
+Wrote results/fish/fish_inv_T256
+Tag fish_inv_T256, folds [0, 1, 2, 3, 4]
+
+=== alpha = 0.05   (target coverage 0.95)
+    empirical coverage   0.9533   95% CI [0.9456, 0.9611]
+    mean set size        1.832   95% CI [1.808, 1.857]
+    median set size      2.0
+    singleton rate       0.193
+    achieves target      True
+    set-size distribution:
+      |C| =  1    608 windows ( 19.3%)  ###########
+      |C| =  2   2463 windows ( 78.2%)  ##############################################
+      |C| =  3     80 windows (  2.5%)  #
+    per-rule coverage:
+      none-0   cov 1.000   mean |C| 1.69
+      near-1   cov 0.986   mean |C| 1.79
+      near-2   cov 0.996   mean |C| 1.81
+      near-3   cov 0.920   mean |C| 1.92
+      rand-1   cov 0.993   mean |C| 1.70
+      rand-2   cov 0.962   mean |C| 1.78
+      rand-3   cov 0.927   mean |C| 1.89
+      infl-1   cov 0.965   mean |C| 1.82
+      infl-2   cov 0.915   mean |C| 1.91
+      infl-3   cov 0.869   mean |C| 1.95  <- under
+      all-4    cov 0.955   mean |C| 1.91
+
+=== alpha = 0.10   (target coverage 0.90)
+    empirical coverage   0.9146   95% CI [0.9033, 0.9256]
+    mean set size        1.255   95% CI [1.236, 1.275]
+    median set size      1.0
+    singleton rate       0.751
+    achieves target      True
+    set-size distribution:
+      |C| =  1   2366 windows ( 75.1%)  #############################################
+      |C| =  2    767 windows ( 24.3%)  ##############
+      |C| =  3     18 windows (  0.6%)  
+    per-rule coverage:
+      none-0   cov 1.000   mean |C| 1.00
+      near-1   cov 0.965   mean |C| 1.15
+      near-2   cov 0.982   mean |C| 1.28
+      near-3   cov 0.895   mean |C| 1.41
+      rand-1   cov 0.986   mean |C| 1.09
+      rand-2   cov 0.938   mean |C| 1.17
+      rand-3   cov 0.860   mean |C| 1.36
+      infl-1   cov 0.913   mean |C| 1.21
+      infl-2   cov 0.834   mean |C| 1.45  <- under
+      infl-3   cov 0.752   mean |C| 1.49  <- under
+      all-4    cov 0.937   mean |C| 1.20
+
+=== alpha = 0.20   (target coverage 0.80)
+    empirical coverage   0.8842   95% CI [0.8706, 0.8976]
+    mean set size        1.112   95% CI [1.100, 1.125]
+    median set size      1.0
+    singleton rate       0.890
+    achieves target      True
+    set-size distribution:
+      |C| =  1   2803 windows ( 89.0%)  #####################################################
+      |C| =  2    343 windows ( 10.9%)  ######
+      |C| =  3      5 windows (  0.2%)  
+    per-rule coverage:
+      none-0   cov 1.000   mean |C| 1.00
+      near-1   cov 0.948   mean |C| 1.04
+      near-2   cov 0.961   mean |C| 1.09
+      near-3   cov 0.857   mean |C| 1.21
+      rand-1   cov 0.983   mean |C| 1.02
+      rand-2   cov 0.927   mean |C| 1.09
+      rand-3   cov 0.839   mean |C| 1.17
+      infl-1   cov 0.875   mean |C| 1.09
+      infl-2   cov 0.760   mean |C| 1.20
+      infl-3   cov 0.662   mean |C| 1.23  <- under
+      all-4    cov 0.916   mean |C| 1.08
+
+Wrote results/fish/fish_inv_T256/conformal.json
+
+Finished: Tue Jul 14 04:53:13 AM EDT 2026
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@gpu16>
+Subject: Job 694253[2]: <fish-long[1-9]> in cluster <Hazel> Done
+
+Job <fish-long[1-9]> was submitted from host <login01.hpc.ncsu.edu> by user <cdondim> in cluster <Hazel> at Tue Jul 14 02:38:07 2026
+Job was executed on host(s) <8*gpu16>, in queue <gpu>, as user <cdondim> in cluster <Hazel> at Tue Jul 14 03:51:29 2026
+</home/cdondim> was used as the home directory.
+</share/cads/cdondim/genmod_d> was used as the working directory.
+Started at Tue Jul 14 03:51:29 2026
+Terminated at Tue Jul 14 04:53:13 2026
+Results reported at Tue Jul 14 04:53:13 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#BSUB -J fish-long[1-9]
+#BSUB -q gpu
+#BSUB -R "select[h100||h200||l40s] rusage[mem=32] span[hosts=1]"
+#BSUB -gpu "num=1"
+#BSUB -n 8
+#BSUB -W 24:00
+#BSUB -o results/logs/fish-long.%J.%I.out
+#BSUB -e results/logs/fish-long.%J.%I.err
+
+# Fish case study: the LONG-WINDOW and ablation runs, as an LSF job array.
+#
+# Split of labour with the local RTX 4090:
+#
+#   local   T=16, T=32, T=64   -- cheap, on the critical path for the paper,
+#                                 and guaranteed to finish before the deadline
+#   Hazel   T=128, 256, 512    -- expensive (T=512 alone is ~12 h on a 4090),
+#           + the ablations       and NOT on the critical path. If they land in
+#                                 time they go in the paper; if not, future work.
+#
+# Cost scales roughly linearly in T: attention is O(A*T^2 + T*A^2) per window
+# and the window count falls as 1/T. T=512 is about 7x a T=64 epoch, but it has
+# only ~3k training windows, so the epoch budget is cut accordingly (a 120-epoch
+# schedule there would overfit, not help).
+#
+# Array indices (LSF is 1-based):
+#   1  transformer, invariant features, T=128
+#   2  transformer, invariant features, T=256
+#   3  transformer, invariant features, T=512
+#   4  GRU baseline, T=128
+#   5  GRU baseline, T=256
+#   6  GRU baseline, T=512
+#   7  ablation: raw ("all") features at T=64      -- the invariance comparison
+#   8  ablation: basic (solo kinematics) at T=64   -- the relational comparison
+#   9  ablation: no augmentation at T=64
+#
+# PREREQUISITE: data/fish/{runs.npz,splits.json,windows_T*.npz} must exist.
+# They are produced by scripts/fish/01..06, which are CPU-only and take a few
+# minutes. Run them once on a login node or in an interactive session:
+#
+#   python scripts/fish/01_inspect_agent_fish_data.py
+#   python scripts/fish/02_create_rule_lookup.py
+#   python scripts/fish/03_preprocess_agent_trajectories.py
+#   python scripts/fish/04_create_grouped_splits.py
+#   python scripts/fish/05_create_trajectory_windows.py
+#   python scripts/fish/06_create_summary_features.py
+#
+# Submission (LSF uses a redirect):
+#   bsub < hpc/hazel_lsf/fish_long_windows.sh
+
+
+(... more ...)
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   3687.85 sec.
+    Max Memory :                                 2 GB
+    Average Memory :                             2.00 GB
+    Total Requested Memory :                     32.00 GB
+    Delta Memory :                               30.00 GB
+    Max Swap :                                   -
+    Max Processes :                              4
+    Max Threads :                                23
+    Run time :                                   3224 sec.
+    Turnaround time :                            8106 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <results/logs/fish-long.694253.2.err> for stderr output of this job.
+

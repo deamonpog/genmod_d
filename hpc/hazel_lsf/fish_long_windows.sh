@@ -1,12 +1,26 @@
 #!/bin/bash
-#BSUB -J fish-long[1-9]
+#BSUB -J fish-long[1-9]%3
 #BSUB -q gpu
 #BSUB -R "select[h100||h200||l40s] rusage[mem=32] span[hosts=1]"
-#BSUB -gpu "num=1"
+#BSUB -gpu "num=1:j_exclusive=yes"
 #BSUB -n 8
 #BSUB -W 24:00
 #BSUB -o results/logs/fish-long.%J.%I.out
 #BSUB -e results/logs/fish-long.%J.%I.err
+
+# WHY j_exclusive AND THE %3 THROTTLE.
+#
+# The first submission of this array lost 6 of 9 tasks to CUDA OOM. The cause
+# was not our models -- they need about 1.3 GB. It was that `-gpu "num=1"`
+# grants A GPU but not EXCLUSIVE use of it, so all nine tasks landed on gpu16
+# alongside another user's process holding 74 GB of the 80 GB card:
+#
+#     GPU 0 has a total capacity of 79.18 GiB of which 9.00 MiB is free.
+#     Process 800543 has 74.18 GiB memory in use.
+#     ... this process has 1.28 GiB memory in use.
+#
+# j_exclusive=yes keeps other jobs off our device; %3 keeps us from colliding
+# with ourselves. Together they are the difference between a 3/9 and a 9/9 run.
 
 # Fish case study: the LONG-WINDOW and ablation runs, as an LSF job array.
 #
@@ -93,18 +107,34 @@ make_cfg () {   # $1 = tag, $2 = window, $3 = features, $4 = epochs, $5 = augmen
     echo "$out"
 }
 
+# MATCH GRADIENT STEPS, NOT EPOCHS.
+#
+# The first submission held epochs roughly fixed across window lengths. But a
+# longer window means FEWER windows, so a fixed epoch count buys fewer
+# optimizer steps:
+#
+#     T=64   25,620 windows / batch 64 = 400 steps/epoch x 120 = 48,000 steps
+#     T=128  12,328 windows / batch 64 = 192 steps/epoch x 120 = 23,040 steps
+#     T=256   5,696 windows / batch 32 = 178 steps/epoch x  80 = 14,240 steps
+#
+# The transformer duly scored 0.866 at T=128 and 0.843 at T=256 against the
+# GRU's 0.964 -- and that is NOT a finding about long windows, it is the same
+# undertraining artifact that made our first T=64 transformer score 0.825 and
+# appear to lose by ten points. Reporting it would repeat the exact error the
+# paper warns about.
+#
+# Epochs below are therefore chosen so that every window length gets roughly
+# 48,000 optimizer steps, matching the T=64 run that IS converged.
 case ${LSB_JOBINDEX} in
-  1)  CFG=$(make_cfg fish_inv_T128 128 invariant 120 true)
+  1)  CFG=$(make_cfg fish_inv_T128 128 invariant 250 true)
       python scripts/fish/09_train_fish_transformer.py --config "$CFG"
       python scripts/fish/10_calibrate_fish_raps.py --tag fish_inv_T128 ;;
 
-  2)  CFG=$(make_cfg fish_inv_T256 256 invariant  80 true)
+  2)  CFG=$(make_cfg fish_inv_T256 256 invariant 270 true)
       python scripts/fish/09_train_fish_transformer.py --config "$CFG"
       python scripts/fish/10_calibrate_fish_raps.py --tag fish_inv_T256 ;;
 
-  # T=512 keeps only ~3k training windows, so a long schedule overfits rather
-  # than helps. 60 epochs, and it is still the longest job in the array.
-  3)  CFG=$(make_cfg fish_inv_T512 512 invariant  60 true)
+  3)  CFG=$(make_cfg fish_inv_T512 512 invariant 280 true)
       python scripts/fish/09_train_fish_transformer.py --config "$CFG"
       python scripts/fish/10_calibrate_fish_raps.py --tag fish_inv_T512 ;;
 
