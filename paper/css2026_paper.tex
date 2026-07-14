@@ -674,13 +674,24 @@ its numbers barely moved. The bug is most dangerous exactly where the model is b
 which is when one is least inclined to be suspicious. For any work measuring
 equifinality \emph{by set size}, this is a silent and material error.
 
+\paragraph{Reproducibility.}
+Every number reported here rests on a five-fold grouped cross-validation in which each
+experiment is tested exactly once, with all confidence intervals bootstrapped over
+runs rather than windows. As an independent check, the sequence model was retrained
+from scratch on separate hardware (an NVIDIA H100 on a cluster, against an RTX 4090
+workstation): at $T=128$ the two runs give $0.9640$ and $0.9671$ -- the same number
+within fold-to-fold noise.
+
 \paragraph{Limitations.}
 The two rule-recovery case studies use simulated data with known ground truth; the
 robot study uses real hardware but a programmed, not discovered, rule. The Schelling
 library, though large, is a depth-3 subset of an infinite rule space. Exchangeability
 holds at the level of runs rather than windows; we mitigate structurally and bootstrap
 over runs. With 50 seeds, the fold-to-fold spread in the collective-motion study is
-about $\pm 0.02$, which is the honest resolution of those numbers.
+about $\pm 0.02$, which is the honest resolution of those numbers. Finally, the
+transformer is trained to convergence only at $T=64$; the observation-length sweep
+uses the sequence model, which the paired comparison in Section~\ref{sec:ladder}
+licenses, and we make no claim about the transformer at other window lengths.
 
 \paragraph{Next.}
 The same release contains trajectories of \emph{real fish}. Section~\ref{sec:robots}
