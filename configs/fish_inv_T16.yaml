@@ -1,0 +1,50 @@
+# Trajectory Transformer on the ROTATION-INVARIANT per-agent features.
+#
+# The fair comparison against the GRU baseline.
+#
+# The GRU consumes per-event group statistics that are rotation invariant,
+# permutation invariant, and relational by construction. The first Transformer
+# run consumed raw per-agent coordinates and had to LEARN those invariances
+# from augmentation, out of only ~25k windows -- and lost to the GRU by 10
+# points (0.825 vs 0.929).
+#
+# This config removes that handicap: the Transformer sees the same invariance
+# guarantees the GRU gets for free (speed, wall distance, dt, neighbor
+# distances, focal-frame angles, local polarization), while KEEPING the
+# per-agent structure the GRU aggregates away. If the Transformer still loses,
+# then agent-level representation genuinely does not help on this system, and
+# RQ5's premise is wrong -- which is a real result, not a failure.
+#
+# Also trains far longer: the first run's validation accuracy was still
+# climbing at epoch 39 and early stopping never fired, so it ran out of budget
+# rather than out of progress.
+
+tag: transformer_inv_T16
+
+window: 16
+features: invariant     # all | basic | invariant
+folds: [0, 1, 2, 3, 4]
+seed: 20260713
+
+d_model: 128
+n_heads: 8
+n_layers: 4
+dropout: 0.1
+
+batch_size: 64
+epochs: 120             # was 40, and val accuracy had not plateaued
+patience: 25
+lr: 3.0e-4
+weight_decay: 0.01
+label_smoothing: 0.05
+num_workers: 0
+
+augment:
+  enabled: true
+  rotate: true          # auto-disabled for invariant features (a no-op there)
+  reflect: true         # still meaningful: it flips the sign of the focal-frame sines
+  permute: true
+
+alphas: [0.05, 0.10, 0.20]
+raps_lambda: 0.1
+raps_k_reg: 2
