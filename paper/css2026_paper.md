@@ -35,15 +35,25 @@ rules and 79% resolve. Equifinality is not a fixed property of a rule library. I
 a property of the library *and the observation*, and it decays measurably as
 observation accumulates.
 
-The cross-domain comparison yields the paper's most actionable finding.
 Identifiability is governed by **what a model can represent**, not by **how large it
-is**: single-agent kinematics reach 0.35, adding relational information reaches
-0.72, adding the time course reaches 0.93 -- after which a 156k-parameter recurrent
-net over group averages matches a 1.8M-parameter transformer over per-agent
-trajectories (paired difference -0.002, 95% CI [-0.008, +0.005]), an eleven-fold
-capacity increase for nothing. Yet in the segregation study, *changing how spatial
-position is encoded* -- at constant capacity -- inflates conformal sets by 68%.
-Capacity is not the lever. Representation is.
+is**: single-agent kinematics reach 0.35, adding relational information reaches 0.72,
+adding the time course reaches 0.93 -- after which a 156k-parameter recurrent net over
+group averages matches a 1.8M-parameter transformer over per-agent trajectories
+(paired difference -0.002, 95% CI [-0.008, +0.005]), an eleven-fold capacity increase
+for nothing. Yet changing how spatial position is *encoded*, at constant capacity,
+inflates the segregation prediction sets by 68%. Capacity is not the lever.
+Representation is.
+
+Finally we transfer the simulation-trained library onto **physical robots** programmed
+with the same rules. It largely fails (0.375), and the reason matters: robots
+executing a given rule school 1.7x less tightly than simulated agents executing it,
+so the classifier reads their behavior correctly and infers the wrong rule.
+Rule identification recovers the *effective* rule of the substrate it was trained on,
+not the *programmed* one. Transporting the conformal calibration across this shift
+fails silently -- 47% coverage while promising 95% -- whereas recalibrating on a
+handful of robot runs restores validity and returns sets containing 10 of 11 rules:
+the framework correctly reporting that it cannot identify the mechanism.
+**Conformal prediction guarantees honesty, not competence.**
 
 ---
 
@@ -426,7 +436,104 @@ prediction set would be indistinguishable from a weak classifier.
 
 ---
 
-## 6. Discussion
+## 6. Case study 3: transfer to physical robots
+
+Everything so far is simulation. The framework's real claim is that a rule library
+learned in simulation identifies mechanisms in a system that was *not* simulated. The
+same release lets us test exactly that: five **cuboid robots**, each programmed with
+one of the same neighbor-selection strategies, moving in a larger arena. Real
+hardware, real actuation error, real collisions -- but the generating rule is still
+known, because it was programmed.
+
+The domain shift is substantial and worth stating precisely: the arena is 1.7x
+larger (0.42 m vs 0.25 m), kicks are 1.9x slower (0.840 s vs 0.434 s), runs are
+shorter, and only ten of the eleven rules have robot files. We take the transformer
+already trained on simulated agents, **change nothing about it**, and run it on 1,961
+non-overlapping robot windows.
+
+**Units first.** Positions are normalized by arena radius, so lengths are already
+dimensionless -- but time is not. Speed is in arena-radii per *second*, and robots
+kick 1.9x more slowly, so a robot moving identically (the same fraction of the arena
+per kick) registers about half the speed. We therefore nondimensionalize, adopting
+each domain's own kick interval as its time unit: `speed x tau`, `accel x tau^2`,
+`dt / tau`. This is a unit conversion, not adaptation; it retrains nothing. It is
+worth +0.085 top-3 accuracy, and skipping it would be as wrong as adding feet to
+metres.
+
+### 6.1 The transfer largely fails -- and the reason is instructive
+
+| | top-1 | top-3 | family | k |
+|---|---|---|---|---|
+| same model on simulated agents | **0.927** | 0.984 | 0.939 | 0.959 |
+| same model on robots | **0.375** | 0.564 | 0.480 | 0.495 |
+
+Chance is 0.10, so the model retains real signal (3.7x chance) but is far from the
+0.927 it achieves in simulation. The *pattern* of failure is the clue: per-rule
+recall is 0.89 for no-interaction and 0.74 for nearest-1, and collapses to ~0 for
+every rule with `k >= 2`, reaching exactly 0 for all-neighbors. **The model reads the
+robots as weakly interacting.**
+
+It is right to. Comparing mean nearest-neighbor distance for the *same rule* across
+substrates:
+
+| rule | agents | robots | ratio |
+|---|---|---|---|
+| no-interaction | 0.549 | 0.509 | **0.93x** |
+| nearest-1 | 0.280 | 0.406 | 1.45x |
+| nearest-2 | 0.215 | 0.338 | 1.57x |
+| influential-2 | 0.209 | 0.307 | 1.47x |
+| **all-4** | 0.182 | 0.313 | **1.71x** |
+
+The discrepancy is **zero when there is no interaction** and **grows monotonically
+with how cohesive the rule ought to be**. Physical embodiment -- inertia, actuation
+error, sensing delay, collision avoidance -- acts as a low-pass filter on interaction
+strength. A robot programmed with all-neighbors achieves the cohesion of a simulated
+agent running nearest-1.
+
+So the classifier is not malfunctioning. It is correctly reading the *behavior*, and
+the behavior says "weak interaction". It is right about the dynamics and wrong about
+the rule, because **the same rule produces different dynamics on different hardware**.
+
+This is the paper's sharpest caution for IGSS. Behavioral-rule identification
+recovers the **effective** rule -- the rule that would produce this behavior in the
+substrate the library was built on -- not the **programmed** rule. A rule library
+cannot be transported across embodiments without accounting for the substrate's own
+dynamics.
+
+### 6.2 The conformal layer reports the failure honestly
+
+This is precisely the situation an uncertainty layer exists for, and it is also the
+situation in which it is most often misused.
+
+| alpha | target | calibrated on **simulation** | calibrated on **robots** |
+|---|---|---|---|
+| 0.05 | 0.95 | coverage **0.473**, \|C\| = 1.6 | coverage **0.939**, \|C\| = 10.0 |
+| 0.10 | 0.90 | coverage 0.440, \|C\| = 1.4 | coverage 0.898, \|C\| = 9.3 |
+| 0.20 | 0.80 | coverage 0.405, \|C\| = 1.2 | coverage 0.815, \|C\| = 6.9 |
+
+**Transporting the calibration set across the domain shift fails silently and
+catastrophically.** It returns small, confident sets of 1.2-1.6 rules that contain the
+truth 47% of the time while promising 95%. Nothing in the output warns you.
+Exchangeability -- the one assumption conformal prediction actually needs -- has been
+violated, and the guarantee is void. This is the trap, and it is easy to fall into:
+the numbers look *better*, not worse.
+
+**Recalibrating on held-out robot runs restores validity** -- same weights, no
+retraining, only the conformal quantile re-estimated from runs of the new system.
+Coverage returns to nominal. And the restored sets contain **10 of the 11 rules**.
+
+That is not a failure of the method. It is the method working. The set size is a
+calibrated statement, and the statement it makes is: *given a library built in
+simulation, these robot trajectories do not identify the mechanism.* The framework
+declines to guess rather than guessing confidently and wrongly.
+
+**Conformal prediction guarantees honesty, not competence.** It cannot manufacture
+information that the observation does not contain, and -- properly calibrated -- it
+does not pretend to.
+
+---
+
+## 7. Discussion
 
 **Equifinality becomes an estimand.** Across both domains, the conformal set
 converts a qualitative caveat into a measured quantity with an interpretable unit:
