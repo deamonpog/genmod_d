@@ -1,5 +1,9 @@
 # Measuring Equifinality: Conformal Rule Identification in Agent-Based Models
 
+> **This is the working draft, NOT the submission file.**
+> `paper/css2026_paper.tex` is authoritative: it is what gets uploaded, and it
+> carries the final wording. If the two disagree, the `.tex` is right.
+
 *Submission to CSS 2026 (Santa Fe). Full paper.*
 
 ---
@@ -591,11 +595,21 @@ dangerous exactly where the model is best -- which is when one is least inclined
 be suspicious. For any work measuring equifinality *by set size*, this is a silent
 and material error.
 
+**Reproducibility.** Every number reported here rests on a five-fold grouped
+cross-validation in which each experiment is tested exactly once, with all confidence
+intervals bootstrapped over runs rather than windows. As an independent check, the
+sequence model was retrained from scratch on separate hardware (an NVIDIA H100 on a
+cluster, against an RTX 4090 workstation): at T=128 the two runs give 0.9640 and
+0.9671 -- the same number within fold-to-fold noise.
+
 **Limitations.** Both case studies use simulated data with known ground truth; this
 is a controlled benchmark for rule recovery, not an empirical inference about
 segregation or fish. The Schelling library, though large, is a depth-3 subset of an
 infinite rule space. Exchangeability holds at the level of runs rather than windows;
-we mitigate structurally and bootstrap over runs. In the collective-motion study, 50
+we mitigate structurally and bootstrap over runs. The transformer is trained to
+convergence only at T=64; the observation-length sweep uses the sequence model, which
+the paired comparison in Section 5.3 licenses, and we make no claim about the
+transformer at other window lengths. In the collective-motion study, 50
 seeds give a fold-to-fold spread of about +-0.02, which is the honest resolution of
 those numbers.
 
