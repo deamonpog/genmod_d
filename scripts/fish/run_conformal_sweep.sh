@@ -24,7 +24,12 @@
 # where prediction sets genuinely contain several rules, and where their
 # shrinkage with observation length becomes the paper's argument in a picture.
 
-set -e
+# NOT `set -e`. On Windows, 08_train_gru_baseline.py runs to completion, prints
+# its results and writes its .npz -- and then exits 127, apparently while tearing
+# down the cuDNN RNN state. (09_train_fish_transformer.py, which has no RNN,
+# exits 0 cleanly.) The results are valid; only the exit code lies. Under
+# `set -e` that bogus code aborted the whole sweep after the first window
+# length, so we check for the OUTPUT FILE instead of trusting the exit status.
 cd "$(dirname "$0")/../.."
 
 # Git Bash re-initializes PATH from the user profile, so the conda env's python
@@ -36,10 +41,22 @@ for T in 16 32 128 256 512; do
     echo "=================================================="
     echo "=== T=$T  GRU"
     echo "=================================================="
-    "$PY" -u scripts/fish/08_train_gru_baseline.py --window "$T" --epochs 60
-    "$PY" -u scripts/fish/10_calibrate_fish_raps.py --tag "gru_T${T}"
+
+    if [ -f "results/fish/gru_T${T}/probs_fold4.npz" ]; then
+        echo "already trained, skipping"
+    else
+        "$PY" -u scripts/fish/08_train_gru_baseline.py --window "$T" --epochs 60 || true
+        if [ ! -f "results/fish/gru_T${T}/probs_fold4.npz" ]; then
+            echo "ERROR: T=$T produced no fold-4 output; this one really did fail"
+            continue
+        fi
+    fi
+
+    echo "=== T=$T  RAPS"
+    "$PY" -u scripts/fish/10_calibrate_fish_raps.py --tag "gru_T${T}" || \
+        echo "ERROR: RAPS failed for T=$T"
 done
 
 echo "=== regenerating figures"
-"$PY" -u scripts/fish/13_make_figures.py
+"$PY" -u scripts/fish/13_make_figures.py || echo "ERROR: figures failed"
 echo "CONFORMAL SWEEP COMPLETE"

@@ -80,20 +80,29 @@ def pooled_probs(tag):
 
 # ----------------------------------------------------------------------
 def fig1_ladder(base):
-    """The representation ladder. This is the paper's central figure."""
+    """The information ladder. This is the paper's central figure.
+
+    transformer_T64 (raw coordinates, 40 epochs, 0.825) is deliberately NOT
+    plotted. Its validation accuracy was still climbing when the epoch budget
+    ran out -- early stopping never fired -- and a 120-epoch control on raw
+    coordinates reaches the same range as the invariant model on the same
+    folds. Plotting 0.825 beside the others would tell the reader that raw
+    coordinates are a worse REPRESENTATION, which our own control contradicts.
+    It is a training-budget artifact, not a rung of this ladder.
+    """
     b = base["results"]["T64"]
 
     rows = [
         ("Chance", CHANCE, 0.0, MUTED),
         ("Solo kinematics\n(random forest)", b["rf_naive"]["acc"][0],
          b["rf_naive"]["acc"][1], SKY),
-        ("Relational group stats\n(random forest)", b["rf"]["acc"][0],
+        ("+ relational\n(random forest)", b["rf"]["acc"][0],
          b["rf"]["acc"][1], BLUE),
     ]
     for tag, label, color in [
-            ("gru_T64", "Relational group stats\n(GRU, sequence)", GREEN),
-            ("transformer_T64", "Agent tokens, raw coords\n(Transformer)", VERM),
-            ("transformer_inv_T64", "Agent tokens, invariant\n(Transformer)", ORANGE)]:
+            ("gru_T64", "+ temporal\n(GRU, 156k params)", GREEN),
+            ("transformer_inv_T64",
+             "+ per-agent\n(Transformer, 1.8M params)", ORANGE)]:
         ev = load(tag, "evaluation.json")
         if ev:
             lo, hi = ev["top-1 accuracy"][1], ev["top-1 accuracy"][2]
@@ -117,7 +126,7 @@ def fig1_ladder(base):
     ax.set_yticklabels([r[0] for r in rows], fontsize=9)
     ax.set_xlim(0, 1.06)
     ax.set_xlabel("Exact-rule accuracy (11 classes)", fontsize=10, color=INK)
-    ax.set_title("Invariance, not architecture, governs rule identifiability\n"
+    ax.set_title("What the model observes, not how it is built\n"
                  "T = 64 kicks (28 s), 5 grouped folds",
                  fontsize=11, color=INK, loc="left", pad=12)
     style(ax)
@@ -151,15 +160,28 @@ def fig2_window(base):
                     textcoords="offset points", fontsize=8.5, color=color,
                     va="center")
 
-    # The learned models, wherever a result exists.
-    for tag, label, color, T in [
-            ("gru_T64", "GRU", GREEN, 64),
-            ("transformer_inv_T64", "Transformer (invariant)", ORANGE, 64),
-            ("transformer_T64", "Transformer (raw coords)", VERM, 64)]:
-        ev = load(tag, "evaluation.json")
+    # The sequence model across every window length.
+    xs, ys, es = [], [], []
+    for T in Ts:
+        ev = load("gru_T%d" % T, "evaluation.json")
         if ev:
-            ax.plot([T], [ev["top-1 accuracy"][0]], marker="D", ms=8,
-                    color=color, zorder=4, label=label, ls="none")
+            lo, hi = ev["top-1 accuracy"][1], ev["top-1 accuracy"][2]
+            xs.append(T)
+            ys.append(ev["top-1 accuracy"][0])
+            es.append((hi - lo) / 2)
+    if xs:
+        ax.errorbar(xs, ys, yerr=es, color=GREEN, lw=2, marker="o", ms=6,
+                    capsize=3, zorder=4, label="+ temporal (GRU)")
+        ax.annotate("+ temporal (GRU)", (xs[-1], ys[-1]), xytext=(6, 0),
+                    textcoords="offset points", fontsize=8.5, color=GREEN,
+                    va="center")
+
+    # The agent-level model, at the one window length where it was trained.
+    ev = load("transformer_inv_T64", "evaluation.json")
+    if ev:
+        ax.plot([64], [ev["top-1 accuracy"][0]], marker="D", ms=9,
+                color=ORANGE, zorder=5, ls="none",
+                label="+ per-agent (Transformer)")
 
     ax.axhline(CHANCE, color=MUTED, ls=":", lw=1)
     ax.text(16, CHANCE + 0.012, "chance", fontsize=8, color=MUTED)
@@ -186,9 +208,13 @@ def fig2_window(base):
 # ----------------------------------------------------------------------
 def fig3_conformal():
     """RAPS coverage and set size. RQ4."""
-    tags = [("transformer_inv_T64", "Transformer (invariant)", ORANGE),
-            ("gru_T64", "GRU", GREEN),
-            ("transformer_T64", "Transformer (raw coords)", VERM)]
+    # T=16 is where the model is genuinely uncertain and the guarantee is
+    # actually tested; T=64 is where it has saturated. Showing both is the
+    # point: the ceiling effect at T=64 is a property of an easy task, not
+    # slack in the method.
+    tags = [("gru_T16", "T=16 (7 s), acc 0.77", BLUE),
+            ("gru_T64", "T=64 (28 s), acc 0.93", GREEN),
+            ("transformer_inv_T64", "T=64, Transformer", ORANGE)]
 
     fig, axes = plt.subplots(1, 2, figsize=(9.6, 3.9))
 
@@ -284,9 +310,8 @@ def fig4_confusion(tag="transformer_inv_T64"):
 # ----------------------------------------------------------------------
 def fig5_errors():
     """Where the errors go. RQ2, and it overturns the stated hypothesis."""
-    tags = [("transformer_inv_T64", "Transformer\n(invariant)"),
-            ("gru_T64", "GRU"),
-            ("transformer_T64", "Transformer\n(raw coords)")]
+    tags = [("transformer_inv_T64", "Transformer\n(agent tokens)"),
+            ("gru_T64", "GRU\n(group stats)")]
 
     FAMILY_OF = np.array([0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4])
     K_OF = np.array([0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 4])
@@ -336,6 +361,107 @@ def fig5_errors():
     print("  fig5_errors")
 
 
+def fig6_equifinality():
+    """Equifinality decays as observation accumulates. THE central measurement.
+
+    Panel A: mean prediction-set size vs observation length, one line per alpha.
+    Panel B: the set-size distribution at alpha=0.10, which makes the abstract
+    number concrete -- at 7 seconds, two thirds of observations cannot resolve
+    the mechanism to a single rule.
+
+    Set size, not accuracy, is the quantity of interest: it is a calibrated,
+    coverage-guaranteed count of how many rules remain live given the data.
+    """
+    Ts = [16, 32, 64, 128, 256, 512]
+    dt = 0.434
+    alphas = [("0.05", "95% confidence", BLUE),
+              ("0.10", "90% confidence", ORANGE),
+              ("0.20", "80% confidence", GREEN)]
+
+    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.1))
+
+    # ---- Panel A: mean |C| vs T -------------------------------------
+    ax = axes[0]
+    for a, label, color in alphas:
+        xs, ys = [], []
+        for T in Ts:
+            c = load("gru_T%d" % T, "conformal.json")
+            if c and a in c["alphas"]:
+                xs.append(T)
+                ys.append(c["alphas"][a]["mean_set_size"])
+        if not xs:
+            continue
+        ax.plot(xs, ys, color=color, lw=2, marker="o", ms=6, zorder=3,
+                label=label)
+        # Direct-label the first point only. The three lines converge on the
+        # right, so end-labels would collide; the legend carries identity there.
+        ax.annotate("%.2f" % ys[0], (xs[0], ys[0]), xytext=(8, 4),
+                    textcoords="offset points", fontsize=9, color=color,
+                    ha="left")
+
+    ax.axhline(1.0, color=MUTED, ls=":", lw=1, zorder=2)
+    ax.text(500, 1.06, "singleton", fontsize=8.5, color=MUTED, ha="right")
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(Ts)
+    ax.set_xticklabels(["%d\n(%.0fs)" % (T, T * dt) for T in Ts], fontsize=8.5)
+    ax.set_xlim(14, 640)
+    ax.set_ylim(0.9, 3.6)
+    ax.legend(frameon=False, fontsize=9, loc="upper right")
+    ax.set_xlabel("Observation window: kick events (seconds)", fontsize=10,
+                  color=INK)
+    ax.set_ylabel("Mean prediction-set size  |C|", fontsize=10, color=INK)
+    ax.set_title("Equifinality decays with observation", fontsize=11,
+                 color=INK, loc="left", pad=10)
+    style(ax)
+
+    # ---- Panel B: set-size distribution at alpha = 0.10 ---------------
+    ax = axes[1]
+    buckets = [("1", BLUE), ("2", ORANGE), ("3", GREEN), (">=4", MUTED)]
+    bottom = np.zeros(len(Ts))
+    shares = {k: [] for k, _ in buckets}
+
+    for T in Ts:
+        c = load("gru_T%d" % T, "conformal.json")
+        h = c["alphas"]["0.10"]["set_size_hist"] if c else {}
+        tot = sum(h.values()) or 1
+        for k, _ in buckets:
+            if k == ">=4":
+                v = sum(n for s, n in h.items() if int(s) >= 4)
+            else:
+                v = h.get(k, 0)
+            shares[k].append(100.0 * v / tot)
+
+    x = np.arange(len(Ts))
+    for k, color in buckets:
+        vals = np.array(shares[k])
+        ax.bar(x, vals, bottom=bottom, width=0.68, color=color,
+               edgecolor="white", lw=2, zorder=3, label="|C| = %s" % k)
+        for xi, (v, b) in enumerate(zip(vals, bottom)):
+            if v >= 7:
+                ax.text(xi, b + v / 2, "%.0f%%" % v, ha="center", va="center",
+                        fontsize=8.5,
+                        color="white" if color != MUTED else "white")
+        bottom += vals
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(["%d\n(%.0fs)" % (T, T * dt) for T in Ts], fontsize=8.5)
+    ax.set_ylim(0, 100)
+    ax.set_xlabel("Observation window: kick events (seconds)", fontsize=10,
+                  color=INK)
+    ax.set_ylabel("Share of observations (%)", fontsize=10, color=INK)
+    ax.set_title("How many rules remain live, at 90% confidence",
+                 fontsize=11, color=INK, loc="left", pad=10)
+    ax.legend(frameon=False, fontsize=8.5, ncol=4, loc="lower center",
+              bbox_to_anchor=(0.5, -0.30))
+    style(ax)
+
+    fig.tight_layout()
+    fig.savefig(os.path.join(FIG, "fig6_equifinality.pdf"))
+    fig.savefig(os.path.join(FIG, "fig6_equifinality.png"), dpi=200)
+    plt.close(fig)
+    print("  fig6_equifinality")
+
+
 def main():
     os.makedirs(FIG, exist_ok=True)
     plt.rcParams["font.family"] = "DejaVu Sans"
@@ -347,6 +473,7 @@ def main():
     fig3_conformal()
     fig4_confusion()
     fig5_errors()
+    fig6_equifinality()
     print("done")
 
 
