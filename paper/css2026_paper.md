@@ -39,14 +39,17 @@ rules and 79% resolve. Equifinality is not a fixed property of a rule library. I
 a property of the library *and the observation*, and it decays measurably as
 observation accumulates.
 
-Identifiability is governed by **what a model can represent**, not by **how large it
-is**: single-agent kinematics reach 0.35, adding relational information reaches 0.72,
-adding the time course reaches 0.93 -- after which a 156k-parameter recurrent net over
-group averages matches a 1.8M-parameter transformer over per-agent trajectories
-(paired difference -0.002, 95% CI [-0.008, +0.005]), an eleven-fold capacity increase
-for nothing. Yet changing how spatial position is *encoded*, at constant capacity,
-inflates the segregation prediction sets by 68%. Capacity is not the lever.
-Representation is.
+Identifiability is governed by **what a model can represent**, not simply by **how
+large it is**: single-agent kinematics reach 0.35, adding relational information
+reaches 0.72, adding the time course reaches 0.93. Changing how spatial position is
+*encoded* -- a change in the model's representational form at a fixed observation and an
+approximately matched parameter budget -- inflates the segregation prediction sets by
+68%. Model capacity can improve extraction within a model family at a fixed
+representation, but cannot distinguish rules the observation has already rendered
+identical. Concretely, a 1.8M-parameter transformer improves on a comparable-budget
+(~150k) one by +0.142 at a fixed per-agent representation, yet parameter count alone
+does not determine performance -- how the budget is split between width and depth
+matters too.
 
 Finally we transfer the simulation-trained library onto **physical robots** programmed
 with the same rules. It largely fails (0.375), and the reason matters: robots
@@ -105,10 +108,15 @@ rule identifiable at all.
    coverage guarantee that makes set size interpretable rather than incidental.
 2. **Demonstration across two unrelated domains** -- 2,089 rules on a lattice, 11
    rules in continuous space -- with nominal coverage in both.
-3. **An information ladder**: which *observations* make a rule identifiable
-   (relational structure, then temporal structure), and the finding that beyond
-   these, model choice contributes nothing measurable. This speaks directly to
-   pattern-oriented modeling and to summary-statistic selection in ABM calibration.
+3. **An information ladder** read through three parameter layers: which *observations*
+   make a rule identifiable (relational structure, then temporal structure), how the
+   model's *representational form* affects resolving power, and what model *capacity*
+   can and cannot recover -- capacity aids extraction within a model family at a fixed
+   representation, but cannot distinguish rules the observation has mapped to identical
+   representations. Parameter count alone is not a sufficient description of a model's
+   power.
+   This speaks directly to pattern-oriented modeling and to summary-statistic
+   selection in ABM calibration.
 4. **A mechanistic reading of residual ambiguity**: in collective motion, *how many*
    neighbors an agent attends to is far more identifiable than *which* neighbors it
    selects -- and the conformal sets say so.
@@ -156,6 +164,31 @@ The pipeline is domain-agnostic and has four stages.
    a distribution over rules.
 4. **Conformal layer.** On a held-out calibration partition never used for training
    or model selection, calibrate RAPS to produce `C(W)` with coverage `1 - alpha`.
+
+**Three kinds of parameter, and the pipeline as a map.** Rule-recovery studies
+routinely conflate three distinct kinds of parameter, and separating them is what lets
+us ask *where* identifiability is won or lost. *Generative-system* parameters
+`theta_ABM` define the world being simulated -- interaction strengths, neighborhood
+radius, density, agent count, and the update rule itself, which here is the target of
+inference. *Observation and representation* parameters `theta_obs` determine how that
+world becomes evidence -- observation length, sampling frequency, aggregation functions,
+token definitions, feature invariances, and whether individual-agent identity is
+retained. *Inference-model* parameters `theta_ML` define the learner -- depth, width,
+attention heads, recurrent-state size, total trainable parameters, and the model's
+internal representational form. The four stages compose into a map
+
+> `theta_ABM  -->  X  --phi_obs-->  Z  --f_theta_ML-->  Gamma_hat_alpha(Z)`
+
+where `X` is the simulated trajectory, `phi_obs` the observation/tokenization map, `Z`
+the machine-readable representation, `f` the classifier, and `Gamma_hat_alpha(Z)` the
+conformal rule set `C(W)` above. The distinction is not pedantic: a recurring error is
+to treat a larger `theta_ML` as if it could recover information that `phi_obs`
+discarded upstream. It cannot. *Capacity cannot distinguish states or rules that the
+observation has mapped to identical representations*; what a model can recover is
+bounded by `theta_obs` first, and by the *form* -- not merely the size -- of `theta_ML`
+second. (For Schelling, `theta_ABM` is under our control in-repo; for collective motion
+we use released simulated trajectories with known rules, so `theta_ABM` is a property
+of the supplied data rather than a simulator we vary.)
 
 **The experimental unit is the simulation run, never the observation window.**
 Windows from the same run are dependent; treating them as independent inflates
@@ -215,13 +248,15 @@ behaviorally similar trees. Conditional coverage by dominant factor is uniform t
 within a few points of the marginal level, so no factor family is systematically
 under-covered.
 
-### 4.1 Representation matters, at constant capacity
+### 4.1 Representational form matters, at fixed observation
 
 We ablate one thing: how spatial position is encoded. The base model learns a
 separate embedding for each of the 625 patch positions; the ablation decomposes it
 into a learned row vector plus a learned column vector. **This *reduces* parameters
 slightly (3.73M vs 3.88M) and leaves the observation, the data, and the training
-budget untouched.** Only the model's representational form changes.
+budget untouched** -- the representation `Z` the model consumes is bit-for-bit
+identical. Only the model's internal representational form (a choice inside `theta_ML`,
+not a change to `theta_obs`) differs.
 
 | | top-1 | mean \|C\| @ alpha=0.10 | @ alpha=0.05 |
 |---|---|---|---|
@@ -235,10 +270,13 @@ unequally *informative*.
 
 This matters for two reasons. First, it shows set size is a more discriminating
 diagnostic than accuracy -- a difference invisible in top-1 is stark in the
-equifinality measure. Second, read against Section 5.3, it locates precisely what
-does and does not matter. There, an eleven-fold increase in *capacity* bought
-nothing. Here, a change in *representation* at constant capacity costs 68% of the
-resolving power. **What a model can represent matters; how big it is does not.**
+equifinality measure. Second, it isolates a distinct lever: this is a change in the
+model's *representational form* (a choice within `theta_ML`) at a fixed observation `Z`
+and an approximately matched parameter budget, and it costs 68% of the resolving power.
+This is a different axis from model capacity: in Section 5.3, capacity within a model
+family (at a fixed per-agent representation) moves accuracy by up to +0.142; here, at a
+fixed observation and near-matched budget, only the representational form changes, and
+it costs 68% of the resolving power.
 
 ---
 
@@ -298,7 +336,8 @@ We compare four **observation designs**, holding the task fixed. `T = 64` kicks
 | **+ temporal** | GRU (156k params) | **0.929 +- 0.023** |
 | **+ per-agent** | transformer (1.8M params) | 0.927 +- 0.020 |
 
-Two large gains, then nothing.
+Two large observation gains. The final row compares a different model family at higher
+capacity; see below and Section 5.3 for what that comparison does and does not license.
 
 **Relational information is worth +0.365.** An observer recording only how each fish
 moves -- speed, turning, wall distance -- recovers the rule 35% of the time. Letting it
@@ -309,17 +348,43 @@ to a model that sees their time course rather than their window average, go from
 0.717 to 0.929. The rules differ in the *persistence* of the influencing set, and a
 window average cannot express persistence.
 
-**Capacity is worth nothing.** A 156k-parameter GRU over thirteen group averages
-matches a 1.8M-parameter transformer over per-agent trajectories: paired difference
-**-0.0015, 95% CI [-0.008, +0.005]**, bootstrapped over runs. Preserving individual
-agent identity -- the representational upgrade one would naturally reach for -- buys
-nothing measurable once relational and temporal structure are present, despite an
-eleven-fold difference in parameter count.
+**Capacity matters within a model family, but parameter count is not a sufficient
+description.** The three transformers all receive the *same* per-agent representation,
+so comparing them isolates what model capacity recovers. Exact-rule accuracy at
+`T = 64`, confidence intervals exp_id-clustered over the 50 experiments:
 
-**For modelers, this is the operative result.** If a rule is not identifiable from
-your data, adding model capacity will not rescue it. The lever is the observation
-design: whether the data retain the relational and temporal structure through which
-the mechanism acts. This is pattern-oriented modeling's intuition, measured.
+| Model | Parameters | Exact-rule accuracy |
+|---|---|---|
+| transformer, 2 layers, d=48 | 148,091 | 0.803 |
+| transformer, 4 layers, d=40 | 182,771 | 0.785 |
+| transformer, 4 layers, d=128 | 1,812,619 | **0.927** |
+| GRU (group statistics) | 155,659 | **0.929** |
+
+Holding the per-agent representation and the four-layer architecture fixed, increasing
+the parameter budget from 182,771 to 1,812,619 raised test accuracy from 0.785 to
+0.927 -- a paired improvement of **+0.142** (95% CI [+0.129, +0.156], exp_id-clustered;
+run-clustered [+0.132, +0.154]). Capacity is therefore not free, and the earlier
+reading that "an eleven-fold increase buys nothing" conflated this within-family effect
+with a cross-architecture tie. But parameter count alone does not determine performance
+either: at a comparable budget, a four-layer d=40 model (0.785) did not improve on -- and
+was slightly below -- a two-layer d=48 model (0.803; paired **-0.018**, 95% CI
+[-0.028, -0.008]). Model size cannot be read independently of how the budget is
+allocated across width and depth, nor of the observation and tokenization upstream.
+
+**The GRU tie is a difference of representational burden.** The 156k GRU matches the
+1.8M transformer (0.929 vs 0.927; paired +0.0015, 95% CI [-0.003, +0.006]) not because
+capacity is irrelevant but because the two carry different burdens: the GRU is handed
+thirteen engineered group statistics, while the transformer must discover comparable
+aggregates from raw per-agent tokens. They share overlapping task-relevant information
+at different representational burden -- a statement about representation, not a contest
+between architectures. (Both control runs were trained under the same 120-epoch
+protocol and reached convergence, with early stopping firing in two folds of the d=40
+model, so this compares converged models.)
+
+**For modelers, the practical message is to report the whole pipeline, not a parameter
+count.** When applying modern ML to IGSS, report not only total parameters but the
+tokenization, observation structure, width and depth, and whether scientific
+invariances are engineered or learned -- each is a lever on what the model can recover.
 
 *A methodological caution, since it nearly misled us.* Our first transformer,
 trained for 40 epochs, scored 0.825 and appeared to lose to the GRU by ten points.
@@ -548,30 +613,41 @@ rules to one or two. One can now ask, quantitatively: *how much data must I coll
 before mechanism A and mechanism B become distinguishable?* Section 5.4 answers
 exactly that.
 
-**Representation matters; capacity does not.** The two case studies isolate
-different variables and, read together, they say something sharper than either does
-alone.
+**Observation and representation shape identifiability; capacity aids extraction
+within a model family.** Read through the three-parameter split of Section 3, the case
+studies locate where identifiability is won and lost.
 
-*Collective motion varies capacity, holding representation fixed.* A GRU over group
-averages and a transformer over per-agent tokens both see the same relational and
-temporal structure; one has eleven times the parameters. The difference is
-indistinguishable from zero.
+*Segregation varies the model's representational form (`theta_ML`) at a fixed
+observation and an approximately matched budget.* A flat per-patch spatial embedding
+and a decomposed row+column embedding see identical data at a near-matched parameter
+count (3.73M vs 3.88M). Accuracy is nearly identical -- yet the conformal sets differ by
+68%.
 
-*Segregation varies representation, holding capacity fixed.* A flat per-patch
-spatial embedding and a decomposed row+column embedding have essentially the same
-parameter count and see identical data. Accuracy is nearly identical -- yet the
-conformal sets differ by 68%.
+*Collective motion varies model capacity (`theta_ML` size) at a fixed per-agent
+representation.* At a fixed four-layer depth, raising the parameter budget from 182,771
+to 1,812,619 improves accuracy by +0.142, but a comparable-budget *depth* increase does
+not (Section 5.3). So capacity matters, yet model size is not a sufficient description
+of a model's power: parameter count cannot be read independently of how it is allocated
+across width and depth, of tokenization, or of the observation upstream. In practice an
+IGSS study should report not only a parameter count but the tokenization, observation
+structure, width and depth, and whether scientific invariances are engineered or
+learned.
 
-The lever is therefore not model size but **what the model is able to represent** --
-which includes, upstream of any architectural choice, what the observation itself
-retains. The information ladder is the same principle applied to the data: relational
-and temporal structure are representational prerequisites, and no amount of capacity
-substitutes for them. For the ABM calibration literature, where summary-statistic
-selection is the central practical problem, this is a concrete measured instance.
+The unifying statement is that capacity can improve extraction within a model family
+when the representation is fixed, but cannot distinguish rules the observation
+(`theta_obs`) has already mapped to identical representations; and that
+cross-architecture efficiency comparisons require matched representations and
+comparable training protocols. The information ladder is the same principle applied to
+the data: relational and temporal structure are representational prerequisites. For the
+ABM calibration literature, where summary-statistic selection is the central practical
+problem, this is a concrete measured instance.
 
 We would not have learned this without the aggregate control. A transformer beating
 a random forest looks like a victory for agent-level modeling; the same transformer
-beside a GRU reveals the gain came from the time axis, which the forest never had.
+beside a GRU -- which is handed the group statistics the transformer must discover from
+per-agent tokens -- reveals the gain came from the time axis, and reframes the
+GRU/transformer contrast as one of differing representational *burden* over overlapping
+task-relevant information, not a contest between architectures.
 Nor without training both models to convergence: our first transformer, stopped at
 40 epochs while still improving, scored 0.825 and would have supported the confident
 and false conclusion that agent-level representation *hurts*.
