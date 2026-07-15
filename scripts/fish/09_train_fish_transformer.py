@@ -174,6 +174,12 @@ def run_fold(cfg, feats, offsets, labels, wins, fold, device, out_dir):
     print("  fold %d: %d params, %d train windows, %d feats"
           % (fold, n_params, len(splits["train"]), n_feat))
 
+    # Per-epoch validation curve, committed to training_log.csv. A negative
+    # result about capacity is only usable if every model is trained to
+    # convergence, so the plateau must be an inspectable artifact, not a claim
+    # in a commit message. history rows are (epoch, train_loss, val_acc).
+    history = []
+
     best_acc, best_state, bad_epochs = -1.0, None, 0
     for epoch in range(cfg["epochs"]):
         model.train()
@@ -194,6 +200,7 @@ def run_fold(cfg, feats, offsets, labels, wins, fold, device, out_dir):
 
         vl, vy = predict(model, splits["val"])
         val_acc = float((vl.argmax(1) == vy).float().mean())
+        history.append((epoch, tot / seen, val_acc))
         print("    epoch %2d  loss %.4f  val_acc %.4f  (%.0fs)"
               % (epoch, tot / seen, val_acc, time.time() - t0), flush=True)
 
@@ -217,7 +224,10 @@ def run_fold(cfg, feats, offsets, labels, wins, fold, device, out_dir):
     temp = fit_temperature(vl, vy)
     print("    best val_acc %.4f, temperature %.3f" % (best_acc, temp))
 
-    out = {"temperature": temp, "val_acc": best_acc, "n_params": n_params}
+    out = {"temperature": temp, "val_acc": best_acc, "n_params": n_params,
+           "history": np.asarray(history, dtype=np.float64),
+           "best_epoch": int(max(range(len(history)),
+                                 key=lambda i: history[i][2])) if history else -1}
     for name in ("calib", "test"):
         logits, y = predict(model, splits[name])
         probs = torch.softmax(logits / temp, dim=1).numpy()
@@ -262,17 +272,41 @@ def main():
     feats, offsets, labels = data["feats"], data["offsets"], data["rule_id"]
     wins = np.load(os.path.join(DATA_DIR, "windows_T%d.npz" % cfg["window"]))
 
-    summaries = []
+    summaries, log_rows, n_params_by_fold = [], [], {}
     for fold in cfg["folds"]:
         r = run_fold(cfg, feats, offsets, labels, wins, fold, device, out_dir)
         acc = float((r["test_probs"].argmax(1) == r["test_labels"]).mean())
         summaries.append(acc)
+        n_params_by_fold[fold] = int(r["n_params"])
+        for epoch, train_loss, val_acc in r["history"]:
+            log_rows.append((fold, int(epoch), float(train_loss), float(val_acc)))
 
     print("\nTest accuracy over %d folds: %.4f +- %.4f"
           % (len(summaries), float(np.mean(summaries)), float(np.std(summaries))))
+
+    # Committed per-epoch validation curve. This is the artifact that makes a
+    # convergence claim inspectable rather than asserted.
+    with open(os.path.join(out_dir, "training_log.csv"), "w") as fh:
+        fh.write("fold,epoch,train_loss,val_acc\n")
+        for fold, epoch, train_loss, val_acc in log_rows:
+            fh.write("%d,%d,%.6f,%.6f\n" % (fold, epoch, train_loss, val_acc))
+
+    # n_params is architecture-fixed across folds; store it (and the tail-mean
+    # val_acc) somewhere greppable, not only inside the per-fold npz.
+    n_params = next(iter(n_params_by_fold.values())) if n_params_by_fold else None
+    summary = {
+        "tag": tag, "config": args.config, "n_params": n_params,
+        "n_params_by_fold": n_params_by_fold,
+        "test_acc_mean": float(np.mean(summaries)),
+        "test_acc_std": float(np.std(summaries)),
+        "epochs_budget": cfg["epochs"],
+    }
+    with open(os.path.join(out_dir, "run_summary.json"), "w") as fh:
+        json.dump(summary, fh, indent=2)
+
     with open(os.path.join(out_dir, "config.json"), "w") as fh:
         json.dump(cfg, fh, indent=2)
-    print("Wrote %s" % out_dir)
+    print("params=%s  wrote %s" % (n_params, out_dir))
 
 
 if __name__ == "__main__":
