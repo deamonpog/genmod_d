@@ -2,9 +2,9 @@
 #BSUB -J fish-fields[1-5]
 #BSUB -q gpu
 #BSUB -R "select[h100||h200] rusage[mem=32] span[hosts=1]"
-#BSUB -gpu "num=1:mode=shared:j_exclusive=no:gmem=60G"
+#BSUB -gpu "num=1:mode=shared:j_exclusive=no:gmem=30G"
 #BSUB -n 8
-#BSUB -W 10:00
+#BSUB -W 6:00
 #BSUB -o results/logs/fish-fields.%J.%I.out
 #BSUB -e results/logs/fish-fields.%J.%I.err
 
@@ -19,15 +19,20 @@
 # fish_long_windows.sh documents -- which was shared WITHOUT a reservation --
 # cannot recur.
 #
-# gmem=60G on an 80 GB card fits batch 64 (~49 GB) with margin and leaves too
-# little for a heavy co-tenant, so each fold effectively gets a dedicated H100
-# while still scheduling like a shared job. This lets us use the FULL batch 64 /
-# 120-epoch config (configs/fish_field_T64.yaml), i.e. the batch-identical,
-# step-identical match to transformer_inv_T64 -- the cleanest comparison.
+# gmem=30G is the value the interactive probe dispatched on instantly; a
+# gmem=60G / 10 h array pended (only 4 H100 cards, none with 60 GB free for the
+# whole duration). So this uses the batch-32 / 60-epoch config
+# (configs/fish_field_T64_l40s.yaml): batch 32 fits ~23 GB inside the 30 GB
+# reservation, and 60 epochs x 800 steps = 48,000 steps -- the SAME step budget
+# as transformer_inv_T64, matched by gradient steps (the fairness rule in
+# fish_long_windows.sh). Only the batch size differs from the trajectory
+# baseline's 64; the comparison stays step-matched.
 #
 # One grouped fold per array task, each to its own directory (field_T64_f{k}),
-# no per-task RAPS. Array index i trains fold k = i - 1. If fewer than five
-# H100s have 60 GB free, some folds queue briefly and start as cards free up.
+# no per-task RAPS. Array index i trains fold k = i - 1. At gmem=30G two folds
+# fit on one 80 GB H100, so all five can run across the 4 H100 cards (some
+# co-located, sharing compute); any that do not fit queue and start as cards
+# free up.
 #
 # PREREQUISITE: data/fish/{runs.npz,splits.json,windows_T64.npz} and the
 # trajectory baseline transformer_inv_T64 (for --compare in finalize).
@@ -77,9 +82,9 @@ K=$(( LSB_JOBINDEX - 1 ))
 CFG="configs/fish_ablations/field_T64_shared_f${K}.yaml"
 sed -e "s/^tag:.*/tag: field_T64_f${K}/" \
     -e "s/^folds:.*/folds: [${K}]/" \
-    configs/fish_field_T64.yaml > "$CFG"
+    configs/fish_field_T64_l40s.yaml > "$CFG"
 
-echo "=== Training field fold ${K} (config ${CFG}, batch 64) ==="
+echo "=== Training field fold ${K} (config ${CFG}, batch 32) ==="
 python scripts/fish/15_train_fish_field.py --config "$CFG"
 
 echo
