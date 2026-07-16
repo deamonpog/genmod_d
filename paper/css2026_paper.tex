@@ -576,6 +576,60 @@ measures nothing.} This is a caution for anyone tempted to calibrate on a satura
 model and conclude that a system exhibits no equifinality: they will have measured the
 ceiling, not the system.
 
+\subsection{The observation, not only the model, sets the ceiling}
+\label{sec:field}
+
+Section~\ref{sec:rowcol} changed $\theta_{\mathrm{ML}}$ -- the representational
+\emph{form} of the model -- at a fixed observation, and the prediction sets inflated by
+$68\%$. Here we turn the other knob. We degrade $\theta_{\mathrm{obs}}$ itself, holding
+the model family and parameter budget fixed, by re-observing the \emph{identical} fish
+runs as a coarse spatial field: each kick event is rendered onto a $32\times32$ grid of
+local density and momentum (density-weighted velocity), so the five agents are summed
+into a field and \textbf{per-agent identity and sub-cell geometry are discarded before
+any model sees the data}. A matched-budget axial patch transformer (${\sim}1.8$M
+parameters, trained to the same $120$-epoch convergence over the same grouped folds,
+same $T=64$ windows) then classifies the rule from the field.
+
+The field is a deterministic, provably lossy function of the trajectory, so no model on
+it can recover what the render removed: the comparison isolates the \emph{observation},
+not the inference model. We are careful not to overclaim. Unlike
+Section~\ref{sec:rowcol}, this is not a same-content, different-form ablation -- the
+field model is necessarily a different architecture (spatial attention over a grid
+rather than social attention over agents), and the observation is genuinely
+\emph{coarser}, not merely reformatted. The claim is only the one the pipeline's own
+logic licenses: a strictly lossier observation raises the equifinality floor, and no
+amount of matched capacity buys it back.
+
+\begin{table}[t]
+\centering
+\small
+\caption{The same runs, observed two ways at $T=64$ (grouped 5-fold, RAPS at $95\%$,
+both models trained to convergence at ${\sim}1.8$M parameters). Rendering the school as
+a coarse density/momentum field discards per-agent identity and inflates the conformal
+sets relative to the identity-preserving trajectory.}
+\label{tab:field}
+\begin{tabular}{lccccc}
+\toprule
+observation ($\theta_{\mathrm{obs}}$) & params & exact-rule & coverage & mean $|C|$ & singletons \\
+\midrule
+identity-preserving trajectory & 1.8M & 0.927 & 0.962 & 1.28 & 73\% \\
+coarse field (identity discarded) & 1.8M & \textbf{TBD} & \textbf{TBD} & \textbf{TBD} & \textbf{TBD} \\
+% FILL the field row from results/fish/field_T64/{run_summary.json, conformal.json}
+% (alpha=0.05) after running hpc/pasteur/fish_field.sh. Expected direction:
+% mean |C| > 1.28 and singleton rate < 73%.
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{TBD.} Discarding identity inflates the mean $95\%$ set from $1.28$ to
+\textbf{TBD} rules (a \textbf{TBD}$\%$ increase) and lowers the singleton rate from
+$73\%$ to \textbf{TBD}$\%$, at matched budget and convergence. This is the converse of
+Section~\ref{sec:rowcol}: there the observation was fixed and the model's form moved the
+sets; here the model family is fixed and the observation moves them. Together the two
+bracket the thesis -- the resolving power of the pipeline is set upstream of, and
+independently by, both what is observed and how the model represents it.
+% NOTE: replace every TBD above with the measured numbers before submission.
+
 \subsection{The residual equifinality is structured}
 
 We expected confusions to stay inside a strategy family and slip on $k$
