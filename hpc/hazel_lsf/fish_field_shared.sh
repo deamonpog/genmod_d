@@ -3,7 +3,7 @@
 #BSUB -q gpu
 #BSUB -R "select[h100||a100||l40] rusage[mem=32] span[hosts=1]"
 #BSUB -gpu "num=1:mode=shared:j_exclusive=no:gmem=30G"
-#BSUB -n 8
+#BSUB -n 2
 #BSUB -W 8:00
 #BSUB -o results/logs/fish-fields.%J.%I.out
 #BSUB -e results/logs/fish-fields.%J.%I.err
@@ -57,8 +57,12 @@ conda activate /usr/local/usrapps/cads/$USER/genmod-env
 
 set -e
 
-export OMP_NUM_THREADS=8
-export MKL_NUM_THREADS=8
+# -n 2, not 8: the field pipeline renders on the GPU with num_workers=0, so it
+# needs only a couple of cores. A large -n blocks scheduling on busy GPU hosts
+# (bjobs -p on the -n 8 job: "not enough processor units to satisfy the job
+# affinity request").
+export OMP_NUM_THREADS=2
+export MKL_NUM_THREADS=2
 
 mkdir -p results/logs results/fish configs/fish_ablations
 
