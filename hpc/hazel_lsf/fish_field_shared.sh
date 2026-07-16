@@ -1,14 +1,14 @@
 #!/bin/bash
 #BSUB -J fish-fields[1-5]
 #BSUB -q gpu
-#BSUB -R "select[h100||h200] rusage[mem=32] span[hosts=1]"
+#BSUB -R "select[h100||a100||l40] rusage[mem=32] span[hosts=1]"
 #BSUB -gpu "num=1:mode=shared:j_exclusive=no:gmem=30G"
 #BSUB -n 8
-#BSUB -W 6:00
+#BSUB -W 8:00
 #BSUB -o results/logs/fish-fields.%J.%I.out
 #BSUB -e results/logs/fish-fields.%J.%I.err
 
-# Field ablation on H100/H200 via SHARED mode with a GPU-memory RESERVATION,
+# Field ablation on H100/A100/L40 via SHARED mode with a GPU-memory RESERVATION,
 # instead of j_exclusive=yes.
 #
 # WHY. Under current load, exclusive GPU requests barely match any host on
@@ -29,10 +29,11 @@
 # baseline's 64; the comparison stays step-matched.
 #
 # One grouped fold per array task, each to its own directory (field_T64_f{k}),
-# no per-task RAPS. Array index i trains fold k = i - 1. At gmem=30G two folds
-# fit on one 80 GB H100, so all five can run across the 4 H100 cards (some
-# co-located, sharing compute); any that do not fit queue and start as cards
-# free up.
+# no per-task RAPS. Array index i trains fold k = i - 1. batch 32 (~23 GB, in a
+# 30 GB reservation) fits any of h100/a100/l40, so widening the select gives far
+# more candidate hosts than h100 alone (bjobs -p on the h100-only job showed
+# only 2 candidate hosts). Any folds that do not fit immediately queue and start
+# as cards free up.
 #
 # PREREQUISITE: data/fish/{runs.npz,splits.json,windows_T64.npz} and the
 # trajectory baseline transformer_inv_T64 (for --compare in finalize).
