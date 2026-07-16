@@ -4,7 +4,7 @@
 #BSUB -R "select[h100||a100||l40] rusage[mem=32] span[hosts=1]"
 #BSUB -gpu "num=1:mode=shared:j_exclusive=no:gmem=30G"
 #BSUB -n 2
-#BSUB -W 8:00
+#BSUB -W 12:00
 #BSUB -o results/logs/fish-fields.%J.%I.out
 #BSUB -e results/logs/fish-fields.%J.%I.err
 
@@ -50,6 +50,11 @@
 #   python scripts/fish/10_calibrate_fish_raps.py --tag field_T64
 #   python scripts/fish/11_evaluate_fish_rules.py --tag field_T64 \
 #       --compare transformer_inv_T64
+
+# Walltime: the short_gpu smoke measured ~460 s/epoch on an L40S (batch 16).
+# Epoch time is set by windows-per-epoch, not batch, so 60 epochs is ~7.7 h on
+# an L40S; -W 12:00 leaves margin for that and for a slower card or a
+# co-located fold sharing compute.
 
 source ~/.bashrc
 module load conda
