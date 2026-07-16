@@ -1,5 +1,5 @@
 #!/bin/bash
-#BSUB -J fish-fieldl[1-5]%3
+#BSUB -J fish-fieldl[1-5]
 #BSUB -q gpu
 #BSUB -R "select[h100||h200||l40s] rusage[mem=32] span[hosts=1]"
 #BSUB -gpu "num=1:j_exclusive=yes"
