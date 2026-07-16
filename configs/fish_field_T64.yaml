@@ -30,9 +30,12 @@ n_heads: 8
 n_layers: 4
 dropout: 0.1
 
-# Fields are heavier than [T,5,20] windows, so start with a smaller batch and
-# raise it only if the GPU has headroom (see the plan's Risks section).
-batch_size: 16
+# Batch 64 matches transformer_inv_T64 exactly: 25,620 windows / 64 = 400
+# steps/epoch x 120 = 48,000 optimizer steps, the same converged budget the
+# trajectory baseline got, so the comparison is step-matched, not just
+# epoch-matched. Needs ~49 GB (fits an 80 GB H100/H200). On a <=24 GB card
+# (e.g. the local 4090) drop this to 16 -- see configs/fish_field_smoke.yaml.
+batch_size: 64
 epochs: 120
 patience: 25
 lr: 3.0e-4
